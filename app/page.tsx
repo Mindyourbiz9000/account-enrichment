@@ -57,6 +57,28 @@ export default function Home() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [logs, thinking]);
 
+  // Tick a "waiting" timer while loading so the UI feels alive even when no
+  // new log events are coming through yet.
+  const [waitSeconds, setWaitSeconds] = useState(0);
+  const lastActivityAt = useRef<number>(Date.now());
+  useEffect(() => {
+    if (!loading) {
+      setWaitSeconds(0);
+      return;
+    }
+    lastActivityAt.current = Date.now();
+    const id = setInterval(() => {
+      setWaitSeconds(
+        Math.floor((Date.now() - lastActivityAt.current) / 1000),
+      );
+    }, 500);
+    return () => clearInterval(id);
+  }, [loading]);
+  useEffect(() => {
+    lastActivityAt.current = Date.now();
+    setWaitSeconds(0);
+  }, [logs.length, thinking]);
+
   const handleExportPdf = useCallback(() => {
     window.print();
   }, []);
@@ -243,9 +265,15 @@ export default function Home() {
             </div>
 
             <div className="max-h-80 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
-              {logs.length === 0 && !thinking && (
-                <div className="text-slate-500">
-                  Waiting for the first event…
+              {loading && logs.length === 0 && !thinking && (
+                <div className="flex items-center gap-3 text-slate-300">
+                  <span className="relative flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-mews-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-mews-600" />
+                  </span>
+                  <span>
+                    Connecting to Claude — first search can take 30–60s…
+                  </span>
                 </div>
               )}
               {logs.map((log, i) => {
@@ -287,6 +315,17 @@ export default function Home() {
                   <pre className="whitespace-pre-wrap text-slate-300 text-xs">
                     {thinking}
                   </pre>
+                </div>
+              )}
+              {loading && logs.length > 0 && (
+                <div className="mt-2 flex items-center gap-2 text-slate-400">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-mews-500 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-mews-600" />
+                  </span>
+                  <span>
+                    Researching… {waitSeconds > 0 ? `(${waitSeconds}s idle)` : ""}
+                  </span>
                 </div>
               )}
               <div ref={logEndRef} />

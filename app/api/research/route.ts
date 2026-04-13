@@ -72,14 +72,58 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let closed = false;
+      const safeEnqueue = (bytes: Uint8Array) => {
+        if (closed) return;
+        try {
+          controller.enqueue(bytes);
+        } catch {
+          closed = true;
+        }
+      };
       const send = (obj: unknown) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
-        );
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        lastEventAt = Date.now();
+      };
+      const sendComment = (text: string) => {
+        safeEnqueue(encoder.encode(`: ${text}\n\n`));
       };
 
       const startedAt = Date.now();
+      let lastEventAt = startedAt;
       const elapsed = () => ((Date.now() - startedAt) / 1000).toFixed(1) + "s";
+
+      // Proxy-defeating padding — some edges buffer the first few KB before
+      // flushing. A 2KB comment guarantees a prompt flush.
+      safeEnqueue(encoder.encode(`: ${" ".repeat(2048)}\n\n`));
+
+      // Keep the connection alive and force periodic flushes through any
+      // buffering proxy. If nothing has happened for >5s, surface a visible
+      // "still working" log so the user sees activity.
+      const heartbeat = setInterval(() => {
+        if (closed) return;
+        sendComment("ping");
+        const silence = Date.now() - lastEventAt;
+        if (silence > 5000) {
+          send({
+            type: "log",
+            level: "think",
+            message: `Still working… (${Math.round(silence / 1000)}s since last event)`,
+            t: elapsed(),
+          });
+        }
+      }, 2000);
+
+      const finish = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
 
       try {
         send({
@@ -256,7 +300,7 @@ Return only the JSON object, no prose, no code fences.`;
               "Claude returned no text. Stop reason: " +
               finalMessage.stop_reason,
           });
-          controller.close();
+          finish();
           return;
         }
 
@@ -269,7 +313,7 @@ Return only the JSON object, no prose, no code fences.`;
             error: "Failed to parse JSON from model",
             raw: text,
           });
-          controller.close();
+          finish();
           return;
         }
 
@@ -279,11 +323,11 @@ Return only the JSON object, no prose, no code fences.`;
           usage: finalMessage.usage,
           elapsed: elapsed(),
         });
-        controller.close();
+        finish();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         send({ type: "error", error: message });
-        controller.close();
+        finish();
       }
     },
   });
