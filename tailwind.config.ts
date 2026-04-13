@@ -5,7 +5,7 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        muse: {
+        mews: {
           50: "#f5f3ff",
           100: "#ede9fe",
           500: "#7c3aed",

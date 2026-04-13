@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Muse Hotel Intelligence",
+  title: "Mews Hotel Intelligence",
   description:
-    "Deep research on hotels for the Muse sales team — contacts, challenges, services, ADR and positioning.",
+    "Deep research on hotels for the Mews sales team — contacts, challenges, services, ADR and positioning.",
 };
 
 export default function RootLayout({

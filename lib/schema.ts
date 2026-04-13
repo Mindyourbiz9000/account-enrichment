@@ -1,5 +1,5 @@
 // JSON schema used by Claude's structured output to produce consistent
-// research dossiers the Muse sales team can consume.
+// research dossiers the Mews sales team can consume.
 
 export const HOTEL_RESEARCH_SCHEMA = {
   type: "object",
@@ -94,9 +94,9 @@ export const HOTEL_RESEARCH_SCHEMA = {
         properties: {
           challenge: { type: "string" },
           evidence: { type: "string" },
-          muse_angle: {
+          mews_angle: {
             type: "string",
-            description: "How Muse could address this specifically",
+            description: "How Mews could address this specifically",
           },
         },
         required: ["challenge"],
@@ -106,7 +106,7 @@ export const HOTEL_RESEARCH_SCHEMA = {
     contacts: {
       type: "array",
       description:
-        "Named individuals relevant for a Muse outreach (GM, DOSM, Revenue, F&B, Events, Spa, Digital/IT, Owner/Asset manager). Only include real, publicly sourced people.",
+        "Named individuals relevant for a Mews outreach (GM, DOSM, Revenue, F&B, Events, Spa, Digital/IT, Owner/Asset manager). Only include real, publicly sourced people.",
       items: {
         type: "object",
         properties: {
@@ -139,10 +139,10 @@ export const HOTEL_RESEARCH_SCHEMA = {
         additionalProperties: false,
       },
     },
-    muse_positioning: {
+    mews_positioning: {
       type: "object",
       description:
-        "Tailored talking points the Muse sales team can open with",
+        "Tailored talking points the Mews sales team can open with",
       properties: {
         opening_hook: { type: "string" },
         top_three_value_props: {

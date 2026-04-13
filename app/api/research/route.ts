@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { HOTEL_RESEARCH_SCHEMA } from "@/lib/schema";
 
@@ -6,9 +6,9 @@ import { HOTEL_RESEARCH_SCHEMA } from "@/lib/schema";
 export const maxDuration = 300;
 export const runtime = "nodejs";
 
-const SYSTEM_PROMPT = `You are a hospitality-industry research analyst working for Muse, a SaaS platform that helps hotels streamline their commercial and operational workflows.
+const SYSTEM_PROMPT = `You are a hospitality-industry research analyst working for Mews, a SaaS platform that helps hotels streamline their commercial and operational workflows.
 
-Your job: given a hotel name, city and country, produce a deep, accurate dossier the Muse sales team can bring into a first call.
+Your job: given a hotel name, city and country, produce a deep, accurate dossier the Mews sales team can bring into a first call.
 
 How to work:
 1. Use web_search aggressively. Start with the hotel's own website, then Google reviews, TripAdvisor, Booking.com, Hotels.com, LinkedIn (for named contacts), trade press (Hotel Management, Skift, Hospitality Net), and the parent brand site if any.
@@ -16,7 +16,7 @@ How to work:
 3. Never fabricate contacts, emails or ADR numbers. If something isn't publicly available, omit the field or mark it as "not publicly disclosed".
 4. For ADR / occupancy, if no public figure exists, give a reasoned estimate based on segment + market + published rate ranges, and label it clearly as an estimate.
 5. For challenges, ground them in actual review themes, segment realities or recent news — not generic hotel problems.
-6. For "muse_positioning", be specific to THIS hotel's situation. No generic sales fluff.
+6. For "mews_positioning", be specific to THIS hotel's situation. No generic sales fluff.
 7. Do at least 6–10 targeted web searches before composing the final answer.
 
 OUTPUT FORMAT (critical):
@@ -24,17 +24,12 @@ Return a single JSON object — and NOTHING ELSE. No prose before or after. No m
 
 ${JSON.stringify(HOTEL_RESEARCH_SCHEMA, null, 2)}`;
 
-// Attempt to salvage a JSON object from a response that may be wrapped in
-// markdown fences or surrounded by prose.
 function extractJson(text: string): unknown {
-  // Try direct parse first.
   try {
     return JSON.parse(text);
   } catch {
     // continue
   }
-
-  // Strip markdown code fences.
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenced) {
     try {
@@ -43,8 +38,6 @@ function extractJson(text: string): unknown {
       // continue
     }
   }
-
-  // Find the outermost {...} block.
   const first = text.indexOf("{");
   const last = text.lastIndexOf("}");
   if (first !== -1 && last > first) {
@@ -54,89 +47,254 @@ function extractJson(text: string): unknown {
       // continue
     }
   }
-
   throw new Error("Could not extract JSON from model response");
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const { hotelName, city, country } = await req.json();
+  const { hotelName, city, country } = await req.json();
 
-    if (!hotelName || !city || !country) {
-      return NextResponse.json(
-        { error: "hotelName, city and country are required" },
-        { status: 400 },
-      );
-    }
+  if (!hotelName || !city || !country) {
+    return new Response(
+      JSON.stringify({ error: "hotelName, city and country are required" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
-      return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY is not configured on the server" },
-        { status: 500 },
-      );
-    }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return new Response(
+      JSON.stringify({
+        error: "ANTHROPIC_API_KEY is not configured on the server",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
 
-    const client = new Anthropic();
+  const encoder = new TextEncoder();
+  const readable = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const send = (obj: unknown) => {
+        controller.enqueue(
+          encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
+        );
+      };
 
-    const userPrompt = `Research this hotel and return the full dossier as a single JSON object.
+      const startedAt = Date.now();
+      const elapsed = () => ((Date.now() - startedAt) / 1000).toFixed(1) + "s";
+
+      try {
+        send({
+          type: "log",
+          level: "start",
+          message: `Starting deep research on "${hotelName}" (${city}, ${country})`,
+          t: elapsed(),
+        });
+
+        const client = new Anthropic();
+
+        const userPrompt = `Research this hotel and return the full dossier as a single JSON object.
 
 Hotel: ${hotelName}
 City: ${city}
 Country: ${country}
 
-Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Muse positioning. Include source URLs.
+Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Mews positioning. Include source URLs.
 
 Return only the JSON object, no prose, no code fences.`;
 
-    const stream = client.messages.stream({
-      model: "claude-opus-4-6",
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      system: SYSTEM_PROMPT,
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 12,
-        } as unknown as Anthropic.Messages.ToolUnion,
-      ],
-      messages: [{ role: "user", content: userPrompt }],
-    });
+        const stream = client.messages.stream({
+          model: "claude-opus-4-6",
+          max_tokens: 16000,
+          thinking: { type: "adaptive" },
+          system: SYSTEM_PROMPT,
+          tools: [
+            {
+              type: "web_search_20250305",
+              name: "web_search",
+              max_uses: 12,
+            } as unknown as Anthropic.Messages.ToolUnion,
+          ],
+          messages: [{ role: "user", content: userPrompt }],
+        });
 
-    const finalMessage = await stream.finalMessage();
+        let currentBlockType: string | null = null;
+        let toolInputBuffer = "";
+        let textCharsEmittedAt = 0;
+        let textCharCount = 0;
+        let searchCount = 0;
 
-    // Concatenate all text blocks — web_search responses can include multiple.
-    const text = finalMessage.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
+        for await (const event of stream) {
+          const e = event as {
+            type: string;
+            content_block?: { type: string; name?: string; content?: unknown };
+            delta?: {
+              type: string;
+              thinking?: string;
+              partial_json?: string;
+              text?: string;
+            };
+          };
 
-    if (!text) {
-      return NextResponse.json(
-        {
-          error:
-            "Claude returned no text. Stop reason: " + finalMessage.stop_reason,
-        },
-        { status: 502 },
-      );
-    }
+          switch (e.type) {
+            case "content_block_start": {
+              const block = e.content_block;
+              if (!block) break;
+              currentBlockType = block.type;
+              toolInputBuffer = "";
 
-    let dossier: unknown;
-    try {
-      dossier = extractJson(text);
-    } catch {
-      return NextResponse.json(
-        { error: "Failed to parse JSON from model", raw: text },
-        { status: 502 },
-      );
-    }
+              if (block.type === "thinking") {
+                send({
+                  type: "log",
+                  level: "think",
+                  message: "Claude is thinking…",
+                  t: elapsed(),
+                });
+              } else if (block.type === "web_search_tool_result") {
+                const content = block.content;
+                if (Array.isArray(content)) {
+                  send({
+                    type: "log",
+                    level: "result",
+                    message: `Got ${content.length} result${content.length !== 1 ? "s" : ""}`,
+                    t: elapsed(),
+                    results: content
+                      .slice(0, 5)
+                      .map((r: { title?: string; url?: string }) => ({
+                        title: r.title,
+                        url: r.url,
+                      })),
+                  });
+                } else if (
+                  content &&
+                  typeof content === "object" &&
+                  "error_code" in (content as Record<string, unknown>)
+                ) {
+                  send({
+                    type: "log",
+                    level: "warn",
+                    message: `Search error: ${(content as { error_code: string }).error_code}`,
+                    t: elapsed(),
+                  });
+                }
+              } else if (block.type === "text") {
+                send({
+                  type: "log",
+                  level: "compose",
+                  message: "Composing dossier JSON…",
+                  t: elapsed(),
+                });
+                textCharCount = 0;
+                textCharsEmittedAt = 0;
+              }
+              break;
+            }
+            case "content_block_delta": {
+              const delta = e.delta;
+              if (!delta) break;
+              if (delta.type === "thinking_delta" && delta.thinking) {
+                send({ type: "thinking", text: delta.thinking });
+              } else if (
+                delta.type === "input_json_delta" &&
+                delta.partial_json
+              ) {
+                toolInputBuffer += delta.partial_json;
+              } else if (delta.type === "text_delta" && delta.text) {
+                textCharCount += delta.text.length;
+                if (textCharCount - textCharsEmittedAt > 1000) {
+                  textCharsEmittedAt = textCharCount;
+                  send({
+                    type: "log",
+                    level: "compose",
+                    message: `…${textCharCount.toLocaleString()} chars written`,
+                    t: elapsed(),
+                  });
+                }
+              }
+              break;
+            }
+            case "content_block_stop": {
+              if (currentBlockType === "server_tool_use" && toolInputBuffer) {
+                try {
+                  const parsed = JSON.parse(toolInputBuffer);
+                  if (parsed && typeof parsed.query === "string") {
+                    searchCount += 1;
+                    send({
+                      type: "log",
+                      level: "search",
+                      message: `Search #${searchCount}: ${parsed.query}`,
+                      t: elapsed(),
+                    });
+                  }
+                } catch {
+                  // partial JSON, ignore
+                }
+              }
+              currentBlockType = null;
+              break;
+            }
+            case "message_stop": {
+              send({
+                type: "log",
+                level: "done",
+                message: "Model finished — parsing JSON…",
+                t: elapsed(),
+              });
+              break;
+            }
+          }
+        }
 
-    return NextResponse.json({
-      dossier,
-      usage: finalMessage.usage,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+        const finalMessage = await stream.finalMessage();
+
+        const text = finalMessage.content
+          .filter((b): b is Anthropic.TextBlock => b.type === "text")
+          .map((b) => b.text)
+          .join("\n");
+
+        if (!text) {
+          send({
+            type: "error",
+            error:
+              "Claude returned no text. Stop reason: " +
+              finalMessage.stop_reason,
+          });
+          controller.close();
+          return;
+        }
+
+        let dossier: unknown;
+        try {
+          dossier = extractJson(text);
+        } catch {
+          send({
+            type: "error",
+            error: "Failed to parse JSON from model",
+            raw: text,
+          });
+          controller.close();
+          return;
+        }
+
+        send({
+          type: "dossier",
+          dossier,
+          usage: finalMessage.usage,
+          elapsed: elapsed(),
+        });
+        controller.close();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        send({ type: "error", error: message });
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(readable, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

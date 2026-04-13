@@ -1,6 +1,6 @@
-# Muse Hotel Intelligence
+# Mews Hotel Intelligence
 
-A Next.js web app that produces a deep research dossier on any hotel for the Muse sales team. Input a hotel name, city, and country — get back contacts, key challenges, services, ADR, reputation signals, tech-stack hints, and Muse-specific positioning.
+A Next.js web app that produces a deep research dossier on any hotel for the Mews sales team. Input a hotel name, city, and country — get back contacts, key challenges, services, ADR, reputation signals, tech-stack hints, and Mews-specific positioning.
 
 ## How it works
 

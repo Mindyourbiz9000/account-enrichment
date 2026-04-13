@@ -43,7 +43,7 @@ export type HotelDossier = {
   key_challenges?: Array<{
     challenge: string;
     evidence?: string;
-    muse_angle?: string;
+    mews_angle?: string;
   }>;
   contacts?: Array<{
     name?: string;
@@ -58,7 +58,7 @@ export type HotelDossier = {
     category?: string;
     evidence?: string;
   }>;
-  muse_positioning?: {
+  mews_positioning?: {
     opening_hook?: string;
     top_three_value_props?: string[];
     discovery_questions?: string[];
@@ -76,7 +76,7 @@ function Section({
 }) {
   return (
     <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 mb-5">
-      <h2 className="text-lg font-semibold text-muse-900 mb-4">{title}</h2>
+      <h2 className="text-lg font-semibold text-mews-900 mb-4">{title}</h2>
       {children}
     </section>
   );
@@ -126,7 +126,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                 href={h.website}
                 target="_blank"
                 rel="noreferrer"
-                className="text-muse-600 underline"
+                className="text-mews-600 underline"
               >
                 {h.website}
               </a>
@@ -249,10 +249,10 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                     {c.evidence}
                   </div>
                 )}
-                {c.muse_angle && (
-                  <div className="mt-1 text-sm text-muse-700">
-                    <span className="font-medium">Muse angle: </span>
-                    {c.muse_angle}
+                {c.mews_angle && (
+                  <div className="mt-1 text-sm text-mews-700">
+                    <span className="font-medium">Mews angle: </span>
+                    {c.mews_angle}
                   </div>
                 )}
               </div>
@@ -283,7 +283,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                       {c.email ? (
                         <a
                           href={`mailto:${c.email}`}
-                          className="text-muse-600 underline"
+                          className="text-mews-600 underline"
                         >
                           {c.email}
                         </a>
@@ -297,7 +297,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                           href={c.linkedin}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-muse-600 underline"
+                          className="text-mews-600 underline"
                         >
                           profile
                         </a>
@@ -334,41 +334,41 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         </Section>
       ) : null}
 
-      {dossier.muse_positioning && (
-        <Section title="Muse positioning">
-          {dossier.muse_positioning.opening_hook && (
+      {dossier.mews_positioning && (
+        <Section title="Mews positioning">
+          {dossier.mews_positioning.opening_hook && (
             <div className="mb-3">
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                 Opening hook
               </div>
               <div className="text-sm text-slate-800">
-                {dossier.muse_positioning.opening_hook}
+                {dossier.mews_positioning.opening_hook}
               </div>
             </div>
           )}
-          {dossier.muse_positioning.top_three_value_props?.length ? (
+          {dossier.mews_positioning.top_three_value_props?.length ? (
             <div className="mb-3">
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                 Top value props
               </div>
-              <List items={dossier.muse_positioning.top_three_value_props} />
+              <List items={dossier.mews_positioning.top_three_value_props} />
             </div>
           ) : null}
-          {dossier.muse_positioning.discovery_questions?.length ? (
+          {dossier.mews_positioning.discovery_questions?.length ? (
             <div className="mb-3">
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                 Discovery questions
               </div>
-              <List items={dossier.muse_positioning.discovery_questions} />
+              <List items={dossier.mews_positioning.discovery_questions} />
             </div>
           ) : null}
-          {dossier.muse_positioning.recommended_next_step && (
+          {dossier.mews_positioning.recommended_next_step && (
             <div>
               <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
                 Recommended next step
               </div>
               <div className="text-sm text-slate-800">
-                {dossier.muse_positioning.recommended_next_step}
+                {dossier.mews_positioning.recommended_next_step}
               </div>
             </div>
           )}
@@ -384,7 +384,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                   href={url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-muse-600 underline break-all"
+                  className="text-mews-600 underline break-all"
                 >
                   {url}
                 </a>
