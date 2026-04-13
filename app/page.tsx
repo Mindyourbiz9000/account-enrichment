@@ -223,12 +223,12 @@ export default function Home() {
       </header>
 
       {/* ── Top panel: form (left) + live log (right) ──
-           Both panels are always rendered side-by-side. The grid uses
-           items-stretch so the log panel automatically matches the form's
-           natural height — i.e. just enough for 3 inputs and a button. As
-           log entries stream in the right panel scrolls internally
-           (overflow-y-auto on its body) instead of growing the row, so
-           the form panel stays exactly the same size from idle to done. */}
+           Both panels are always rendered side-by-side. The log panel is
+           absolutely positioned inside its grid cell on md+ so it does NOT
+           contribute to the row's height — the row is sized purely by the
+           form (3 inputs + button). The log then fills that height and
+           scrolls internally as entries stream in, so the form panel stays
+           exactly the same size from idle to done. */}
       <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
@@ -283,8 +283,12 @@ export default function Home() {
 
         {/* Live log — always rendered so the layout doesn't shift when the
             user clicks "Run deep research". Shows an idle placeholder
-            before any activity. */}
-        <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
+            before any activity. The outer wrapper is the grid cell; the
+            <section> is absolutely positioned on md+ so its intrinsic
+            content height doesn't push the row taller — the row stays
+            locked to the form's height and the log scrolls internally. */}
+        <div className="relative min-h-[14rem] md:min-h-0">
+          <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden flex flex-col md:absolute md:inset-0 h-full">
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
@@ -386,6 +390,7 @@ export default function Home() {
               <div ref={logEndRef} />
             </div>
           </section>
+        </div>
       </div>
 
       {/* ── Error ── */}
