@@ -225,10 +225,10 @@ export default function Home() {
       </header>
 
       {/* ── Top panel: form (left) + live log (right) ── */}
-      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-start" : ""}`}>
+      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-stretch" : ""}`}>
         {/* Form */}
-        <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
-          <form onSubmit={onSubmit} className="grid gap-4">
+        <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col">
+          <form onSubmit={onSubmit} className="grid gap-4 flex-1">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Hotel name
@@ -270,7 +270,7 @@ export default function Home() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition"
+              className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition mt-auto"
             >
               {loading ? "Researching…" : "Run deep research"}
             </button>
@@ -279,7 +279,7 @@ export default function Home() {
 
         {/* Live log — only rendered when there's activity */}
         {showLogPanel && (
-          <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full">
+          <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
@@ -309,7 +309,7 @@ export default function Home() {
               )}
             </div>
 
-            <div className="max-h-80 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
               {loading && logs.length === 0 && !thinking && (
                 <div className="flex items-center gap-3 text-slate-300">
                   <span className="relative flex h-3 w-3">
