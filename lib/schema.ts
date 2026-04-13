@@ -22,6 +22,16 @@ export const HOTEL_RESEARCH_SCHEMA = {
         },
         star_rating: { type: "string" },
         address: { type: "string" },
+        hero_image_url: {
+          type: "string",
+          description:
+            "Direct URL to a representative photo of the hotel exterior or signature space. Must be a stable, publicly reachable image URL (e.g. from the hotel's own website og:image, or a booking.com / expedia / hotel-brand CDN). Omit if you cannot verify one exists.",
+        },
+        tldr: {
+          type: "string",
+          description:
+            "One or two crisp sentences capturing what this hotel is and why it matters — written like a Michelin-guide headline, not marketing fluff.",
+        },
       },
       required: ["name", "city", "country"],
       additionalProperties: false,

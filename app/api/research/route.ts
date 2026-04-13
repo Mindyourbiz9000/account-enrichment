@@ -18,6 +18,8 @@ How to work:
 5. For challenges, ground them in actual review themes, segment realities or recent news — not generic hotel problems.
 6. For "mews_positioning", be specific to THIS hotel's situation. No generic sales fluff.
 7. Do at least 6–10 targeted web searches before composing the final answer.
+8. Always try to find ONE good hero image URL (hotel.hero_image_url): look for an og:image on the hotel's own homepage, a Booking.com / Expedia / brand-CDN photo URL, or a press-kit image. Paste the direct image URL (must end in .jpg / .jpeg / .png / .webp or return an image). If you cannot verify one, omit the field — do not invent URLs.
+9. Always write a 1–2 sentence "tldr" for hotel.tldr — a crisp, journalist-style headline summary that a salesperson can read in 5 seconds.
 
 OUTPUT FORMAT (critical):
 Return a single JSON object — and NOTHING ELSE. No prose before or after. No markdown code fences. The object MUST conform to this JSON schema:
@@ -72,14 +74,58 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let closed = false;
+      const safeEnqueue = (bytes: Uint8Array) => {
+        if (closed) return;
+        try {
+          controller.enqueue(bytes);
+        } catch {
+          closed = true;
+        }
+      };
       const send = (obj: unknown) => {
-        controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify(obj)}\n\n`),
-        );
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify(obj)}\n\n`));
+        lastEventAt = Date.now();
+      };
+      const sendComment = (text: string) => {
+        safeEnqueue(encoder.encode(`: ${text}\n\n`));
       };
 
       const startedAt = Date.now();
+      let lastEventAt = startedAt;
       const elapsed = () => ((Date.now() - startedAt) / 1000).toFixed(1) + "s";
+
+      // Proxy-defeating padding — some edges buffer the first few KB before
+      // flushing. A 2KB comment guarantees a prompt flush.
+      safeEnqueue(encoder.encode(`: ${" ".repeat(2048)}\n\n`));
+
+      // Keep the connection alive and force periodic flushes through any
+      // buffering proxy. If nothing has happened for >5s, surface a visible
+      // "still working" log so the user sees activity.
+      const heartbeat = setInterval(() => {
+        if (closed) return;
+        sendComment("ping");
+        const silence = Date.now() - lastEventAt;
+        if (silence > 5000) {
+          send({
+            type: "log",
+            level: "think",
+            message: `Still working… (${Math.round(silence / 1000)}s since last event)`,
+            t: elapsed(),
+          });
+        }
+      }, 2000);
+
+      const finish = () => {
+        if (closed) return;
+        closed = true;
+        clearInterval(heartbeat);
+        try {
+          controller.close();
+        } catch {
+          // already closed
+        }
+      };
 
       try {
         send({
@@ -102,14 +148,25 @@ Cover everything the schema asks for: website, property profile, services (F&B, 
 Return only the JSON object, no prose, no code fences.`;
 
         const stream = client.messages.stream({
-          model: "claude-sonnet-4-6",
-          max_tokens: 10000,
-          system: SYSTEM_PROMPT,
+          // Haiku 4.5 is ~3× cheaper than Sonnet on tokens and is plenty
+          // capable for web-grounded hotel research. Combined with prompt
+          // caching on the (large) system prompt and a capped number of
+          // web searches this keeps the per-run cost in the single-digit-
+          // cents range.
+          model: "claude-haiku-4-5",
+          max_tokens: 8000,
+          system: [
+            {
+              type: "text",
+              text: SYSTEM_PROMPT,
+              cache_control: { type: "ephemeral" },
+            },
+          ],
           tools: [
             {
               type: "web_search_20250305",
               name: "web_search",
-              max_uses: 8,
+              max_uses: 5,
             } as unknown as Anthropic.Messages.ToolUnion,
           ],
           messages: [{ role: "user", content: userPrompt }],
@@ -256,7 +313,7 @@ Return only the JSON object, no prose, no code fences.`;
               "Claude returned no text. Stop reason: " +
               finalMessage.stop_reason,
           });
-          controller.close();
+          finish();
           return;
         }
 
@@ -269,7 +326,7 @@ Return only the JSON object, no prose, no code fences.`;
             error: "Failed to parse JSON from model",
             raw: text,
           });
-          controller.close();
+          finish();
           return;
         }
 
@@ -279,11 +336,11 @@ Return only the JSON object, no prose, no code fences.`;
           usage: finalMessage.usage,
           elapsed: elapsed(),
         });
-        controller.close();
+        finish();
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         send({ type: "error", error: message });
-        controller.close();
+        finish();
       }
     },
   });

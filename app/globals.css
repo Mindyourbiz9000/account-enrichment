@@ -32,4 +32,20 @@ body {
   .avoid-break {
     break-inside: avoid;
   }
+
+  /* The chevron is only useful when sections can collapse — hide in print */
+  details summary svg {
+    display: none !important;
+  }
+
+  /* Tighter spacing in print */
+  details summary {
+    cursor: default !important;
+  }
+
+  /* Make sure hero image doesn't blow up a page */
+  img {
+    max-height: 300px;
+    object-fit: cover;
+  }
 }

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 
 export type HotelDossier = {
   hotel?: {
@@ -10,6 +10,8 @@ export type HotelDossier = {
     segment?: string;
     star_rating?: string;
     address?: string;
+    hero_image_url?: string;
+    tldr?: string;
   };
   property_profile?: {
     number_of_rooms?: string;
@@ -69,15 +71,27 @@ export type HotelDossier = {
 
 function Section({
   title,
+  subtitle,
   children,
+  defaultOpen = false,
 }: {
   title: string;
+  subtitle?: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
   return (
-    <details className="group rounded-2xl bg-white border border-slate-200 shadow-sm mb-5 overflow-hidden">
+    <details
+      open={defaultOpen}
+      className="group avoid-break rounded-2xl bg-white border border-slate-200 shadow-sm mb-5 overflow-hidden"
+    >
       <summary className="flex items-center justify-between px-6 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-slate-50 transition-colors">
-        <h2 className="text-lg font-semibold text-mews-900">{title}</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-mews-900">{title}</h2>
+          {subtitle && (
+            <div className="text-xs text-slate-500 mt-0.5">{subtitle}</div>
+          )}
+        </div>
         <svg
           className="h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
           fill="none"
@@ -114,6 +128,130 @@ function List({ items }: { items?: string[] }) {
   );
 }
 
+function StatPill({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value?: string;
+  accent?: string;
+}) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col rounded-xl border border-slate-200 bg-white/80 backdrop-blur px-3 py-2 min-w-[96px]">
+      <span className="text-[10px] uppercase tracking-wide text-slate-500">
+        {label}
+      </span>
+      <span className={`text-sm font-semibold ${accent ?? "text-slate-900"}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function HeroCard({ dossier }: { dossier: HotelDossier }) {
+  const h = dossier.hotel ?? {};
+  const p = dossier.property_profile ?? {};
+  const r = dossier.reputation ?? {};
+  const [imgFailed, setImgFailed] = useState(false);
+  const showImg = h.hero_image_url && !imgFailed;
+
+  const subtitle = [h.city, h.country].filter(Boolean).join(", ");
+  const metaLine = [h.star_rating, h.segment, h.brand_or_group]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div className="avoid-break rounded-2xl overflow-hidden border border-slate-200 shadow-sm mb-6 bg-white">
+      <div className="grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        {/* Image / gradient */}
+        <div className="relative h-56 md:h-auto md:min-h-[240px] bg-gradient-to-br from-mews-100 via-mews-500 to-mews-700">
+          {showImg && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={h.hero_image_url}
+              alt={h.name ?? "Hotel"}
+              onError={() => setImgFailed(true)}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          {!showImg && (
+            <div className="absolute inset-0 flex items-center justify-center text-white/70 text-6xl font-bold tracking-tight">
+              {(h.name ?? "?").slice(0, 1).toUpperCase()}
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="p-6 md:p-7 flex flex-col gap-3">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-mews-900 leading-tight">
+              {h.name ?? "Unknown hotel"}
+            </h1>
+            {subtitle && (
+              <div className="text-sm text-slate-600 mt-1">{subtitle}</div>
+            )}
+            {metaLine && (
+              <div className="text-xs text-slate-500 mt-1">{metaLine}</div>
+            )}
+          </div>
+
+          {h.tldr && (
+            <p className="text-sm text-slate-700 leading-relaxed border-l-2 border-mews-600 pl-3">
+              {h.tldr}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2 mt-1">
+            <StatPill
+              label="Google"
+              value={r.google_rating}
+              accent="text-emerald-700"
+            />
+            <StatPill
+              label="TripAdvisor"
+              value={r.tripadvisor_rating}
+              accent="text-emerald-700"
+            />
+            <StatPill
+              label="Booking.com"
+              value={r.booking_rating}
+              accent="text-blue-700"
+            />
+            <StatPill
+              label="Reviews"
+              value={r.review_volume}
+              accent="text-slate-700"
+            />
+            <StatPill
+              label="ADR"
+              value={p.estimated_adr}
+              accent="text-mews-700"
+            />
+            <StatPill
+              label="Rooms"
+              value={p.number_of_rooms}
+              accent="text-slate-700"
+            />
+          </div>
+
+          {h.website && (
+            <a
+              href={h.website}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-mews-700 underline decoration-dotted mt-1 self-start break-all"
+            >
+              {h.website}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   const h = dossier.hotel ?? {};
   const p = dossier.property_profile ?? {};
@@ -122,41 +260,71 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
 
   return (
     <div>
+      <HeroCard dossier={dossier} />
       {/* ── Mews positioning — top priority for sales team ── */}
       {dossier.mews_positioning && (
-        <Section title="Mews positioning">
+        <Section
+          title="Mews positioning"
+          subtitle="What to lead with on the first call"
+        >
           {dossier.mews_positioning.opening_hook && (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+            <div className="rounded-xl bg-mews-50 border border-mews-100 p-4 mb-5">
+              <div className="text-[10px] uppercase tracking-wide text-mews-700 font-semibold mb-1">
                 Opening hook
               </div>
-              <div className="text-sm text-slate-800">
-                {dossier.mews_positioning.opening_hook}
+              <div className="text-base text-mews-900 leading-relaxed font-medium">
+                “{dossier.mews_positioning.opening_hook}”
               </div>
             </div>
           )}
           {dossier.mews_positioning.top_three_value_props?.length ? (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+            <div className="mb-5">
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
                 Top value props
               </div>
-              <List items={dossier.mews_positioning.top_three_value_props} />
+              <div className="grid md:grid-cols-3 gap-3">
+                {dossier.mews_positioning.top_three_value_props.map(
+                  (vp, i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-800"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-mews-600 text-black text-xs font-bold flex items-center justify-center mb-2">
+                        {i + 1}
+                      </div>
+                      {vp}
+                    </div>
+                  ),
+                )}
+              </div>
             </div>
           ) : null}
           {dossier.mews_positioning.discovery_questions?.length ? (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+            <div className="mb-5">
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
                 Discovery questions
               </div>
-              <List items={dossier.mews_positioning.discovery_questions} />
+              <ul className="space-y-2 text-sm text-slate-800">
+                {dossier.mews_positioning.discovery_questions.map((q, i) => (
+                  <li
+                    key={i}
+                    className="flex gap-3 border-l-2 border-slate-200 pl-3"
+                  >
+                    <span className="text-mews-700 font-semibold shrink-0">
+                      Q{i + 1}.
+                    </span>
+                    <span>{q}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
           {dossier.mews_positioning.recommended_next_step && (
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+            <div className="rounded-xl bg-emerald-50 border border-emerald-100 p-4">
+              <div className="text-[10px] uppercase tracking-wide text-emerald-700 font-semibold mb-1">
                 Recommended next step
               </div>
-              <div className="text-sm text-slate-800">
+              <div className="text-sm text-emerald-900 leading-relaxed">
                 {dossier.mews_positioning.recommended_next_step}
               </div>
             </div>
@@ -166,26 +334,38 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
 
       {/* ── Key challenges ── */}
       {dossier.key_challenges?.length ? (
-        <Section title="Key challenges">
-          <div className="space-y-4">
+        <Section
+          title="Key challenges"
+          subtitle={`${dossier.key_challenges.length} pain points to probe`}
+        >
+          <div className="space-y-3">
             {dossier.key_challenges.map((c, i) => (
               <div
                 key={i}
-                className="rounded-lg border border-slate-200 p-4 bg-slate-50"
+                className="rounded-lg border border-slate-200 overflow-hidden"
               >
-                <div className="font-medium text-slate-900">{c.challenge}</div>
-                {c.evidence && (
-                  <div className="mt-1 text-sm text-slate-600">
-                    <span className="font-medium">Evidence: </span>
-                    {c.evidence}
-                  </div>
-                )}
-                {c.mews_angle && (
-                  <div className="mt-1 text-sm text-mews-700">
-                    <span className="font-medium">Mews angle: </span>
-                    {c.mews_angle}
-                  </div>
-                )}
+                <div className="bg-amber-50 border-b border-amber-100 px-4 py-2.5 font-semibold text-amber-900 text-sm flex items-start gap-2">
+                  <span className="text-amber-600 shrink-0">#{i + 1}</span>
+                  <span>{c.challenge}</span>
+                </div>
+                <div className="p-4 space-y-2 bg-white">
+                  {c.evidence && (
+                    <div className="text-sm text-slate-700">
+                      <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
+                        Evidence
+                      </span>
+                      {c.evidence}
+                    </div>
+                  )}
+                  {c.mews_angle && (
+                    <div className="text-sm text-mews-900 bg-mews-50 rounded p-2">
+                      <span className="font-semibold text-mews-700 text-[10px] uppercase tracking-wide block mb-0.5">
+                        Mews angle
+                      </span>
+                      {c.mews_angle}
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
