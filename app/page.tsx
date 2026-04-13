@@ -202,8 +202,6 @@ export default function Home() {
     }
   }
 
-  const showLogPanel = loading || logs.length > 0 || thinking.length > 0;
-
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
       {/* ── Header ── */}
@@ -225,11 +223,12 @@ export default function Home() {
       </header>
 
       {/* ── Top panel: form (left) + live log (right) ──
-           When the log is showing we lock both panels to the same fixed
-           height. The log scrolls internally (overflow-y-auto on its body)
-           rather than growing the row, so the form doesn't get stretched
-           taller and taller as new log entries stream in. */}
-      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-stretch md:h-[28rem]" : ""}`}>
+           Both panels are ALWAYS rendered side-by-side at the same fixed
+           height. Before research starts the right panel shows an idle
+           placeholder, so clicking "Run deep research" doesn't cause any
+           reflow / size change — the form stays put, the log just lights
+           up in place. The log scrolls internally as entries stream in. */}
+      <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch md:h-[28rem]">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
           <form onSubmit={onSubmit} className="grid gap-4 flex-1">
@@ -281,9 +280,10 @@ export default function Home() {
           </form>
         </section>
 
-        {/* Live log — only rendered when there's activity */}
-        {showLogPanel && (
-          <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
+        {/* Live log — always rendered so the layout doesn't shift when the
+            user clicks "Run deep research". Shows an idle placeholder
+            before any activity. */}
+        <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full flex flex-col">
             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
               <div className="flex items-center gap-3">
                 <div className="flex gap-1.5">
@@ -314,6 +314,11 @@ export default function Home() {
             </div>
 
             <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
+              {!loading && logs.length === 0 && !thinking && (
+                <div className="flex h-full items-center justify-center text-slate-500 italic">
+                  Awaiting research — fill the form and click run.
+                </div>
+              )}
               {loading && logs.length === 0 && !thinking && (
                 <div className="flex items-center gap-3 text-slate-300">
                   <span className="relative flex h-3 w-3">
@@ -380,7 +385,6 @@ export default function Home() {
               <div ref={logEndRef} />
             </div>
           </section>
-        )}
       </div>
 
       {/* ── Error ── */}
