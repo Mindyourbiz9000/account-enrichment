@@ -290,6 +290,90 @@ export const HOTEL_RESEARCH_SCHEMA = {
         additionalProperties: false,
       },
     },
+    mews_qualification: {
+      type: "object",
+      description:
+        "Mews internal segment qualification. Maps the hotel against the playbook's green-signal / red-flag matrix and gives the salesperson a verdict + the single fastest disqualifying question to ask on the call.",
+      properties: {
+        segment: {
+          type: "string",
+          description:
+            "Which playbook segment best fits: 'Boutique & lifestyle', 'Aparthotel / serviced apartments / long-stay', 'Hostels & budget', 'Resorts & leisure', 'Chain / multi-property (MMP)', or 'General'.",
+        },
+        verdict: {
+          type: "string",
+          enum: [
+            "🟩 strong fit",
+            "🟨 limited fit",
+            "🟥 poor fit",
+            "needs more discovery",
+          ],
+          description:
+            "Overall fit verdict per Mews ICP and the segment cheat-sheet.",
+        },
+        verdict_rationale: {
+          type: "string",
+          description:
+            "1–2 sentences explaining the verdict in plain English (room count, segment, market, key pivotal signals).",
+        },
+        fit_signals: {
+          type: "array",
+          description:
+            "Green signals from the segment cheat-sheet that this property exhibits.",
+          items: {
+            type: "object",
+            properties: {
+              signal: {
+                type: "string",
+                description:
+                  "The green-signal phrase from the playbook (quote it verbatim where possible).",
+              },
+              evidence: {
+                type: "string",
+                description:
+                  "Short observed proof from the research (e.g. 'F&B-heavy: 2 restaurants + lounge bar').",
+              },
+            },
+            required: ["signal"],
+            additionalProperties: false,
+          },
+        },
+        red_flags: {
+          type: "array",
+          description:
+            "Red flags / DQ triggers from the segment cheat-sheet OR the cross-segment hard-stop list.",
+          items: {
+            type: "object",
+            properties: {
+              flag: {
+                type: "string",
+                description:
+                  "The red-flag phrase from the playbook (quote it verbatim where possible).",
+              },
+              evidence: {
+                type: "string",
+                description:
+                  "Short observed proof or risk indicator from the research.",
+              },
+              severity: {
+                type: "string",
+                enum: ["blocker", "watch"],
+                description:
+                  "'blocker' if on the cross-segment hard-stop list or the segment's deal-breaker; otherwise 'watch'.",
+              },
+            },
+            required: ["flag"],
+            additionalProperties: false,
+          },
+        },
+        fastest_dq_check: {
+          type: "string",
+          description:
+            "The single most useful disqualifying question for this segment. Use the cheat-sheet's 'Fastest check' / 'Fastest DQ' / 'First question' verbatim where applicable.",
+        },
+      },
+      additionalProperties: false,
+    },
     mews_positioning: {
       type: "object",
       description:
