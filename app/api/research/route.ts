@@ -52,29 +52,115 @@ Return a single JSON object — and NOTHING ELSE. No prose before or after. No m
 
 ${JSON.stringify(HOTEL_RESEARCH_SCHEMA, null, 2)}`;
 
-// Map the raw Anthropic / transport error into something a salesperson can
-// read. Credit-balance exhaustion, rate limits and overloaded errors all
-// collapse to the same "try again in 5 min, ping Thomas if it persists"
-// message so the UI never leaks an internal 4xx JSON blob.
-const CAPACITY_ERROR_MESSAGE =
-  "Sorry — we've reached the maximum number of requests at the moment. Please try again in 5 minutes. If it still persists, please reach out to Thomas Barvaux on Slack.";
+// Translate a raw Anthropic / transport error into something a salesperson
+// can read. When the SDK gives us an APIError we can inspect the headers
+// for the exact rate-limit reset time and tell the user when to come back.
+const SLACK_FALLBACK =
+  "If it still persists, please reach out to Thomas Barvaux on Slack.";
 
-function friendlyApiError(raw: string): string {
-  const s = raw.toLowerCase();
-  if (
-    s.includes("credit balance") ||
-    s.includes("invalid_request_error") ||
-    s.includes("rate_limit") ||
-    s.includes("rate limit") ||
-    s.includes("429") ||
-    s.includes("overloaded") ||
-    s.includes("529") ||
-    s.includes("quota") ||
-    s.includes("billing")
-  ) {
-    return CAPACITY_ERROR_MESSAGE;
+function formatResetIn(reset: Date): string {
+  const ms = reset.getTime() - Date.now();
+  if (ms <= 0) return "in a few seconds";
+  const totalSec = Math.ceil(ms / 1000);
+  if (totalSec < 60) return `in ${totalSec} second${totalSec === 1 ? "" : "s"}`;
+  const totalMin = Math.ceil(totalSec / 60);
+  if (totalMin < 60) return `in ${totalMin} minute${totalMin === 1 ? "" : "s"}`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `in ${h}h${m ? ` ${m}m` : ""}`;
+}
+
+type HeaderBag =
+  | Headers
+  | Record<string, string | string[] | undefined>
+  | undefined
+  | null;
+
+function readHeader(headers: HeaderBag, name: string): string | null {
+  if (!headers) return null;
+  if (typeof (headers as Headers).get === "function") {
+    return (headers as Headers).get(name);
   }
-  return raw;
+  const bag = headers as Record<string, string | string[] | undefined>;
+  const val = bag[name] ?? bag[name.toLowerCase()];
+  if (Array.isArray(val)) return val[0] ?? null;
+  return val ?? null;
+}
+
+function soonestReset(headers: HeaderBag): Date | null {
+  const candidates = [
+    "anthropic-ratelimit-requests-reset",
+    "anthropic-ratelimit-tokens-reset",
+    "anthropic-ratelimit-input-tokens-reset",
+    "anthropic-ratelimit-output-tokens-reset",
+  ];
+  let soonest: Date | null = null;
+  for (const name of candidates) {
+    const raw = readHeader(headers, name);
+    if (!raw) continue;
+    const t = new Date(raw);
+    if (isNaN(t.getTime())) continue;
+    if (!soonest || t < soonest) soonest = t;
+  }
+  // Fallback: retry-after header (seconds)
+  if (!soonest) {
+    const retryAfter = readHeader(headers, "retry-after");
+    if (retryAfter) {
+      const sec = parseInt(retryAfter, 10);
+      if (!isNaN(sec)) soonest = new Date(Date.now() + sec * 1000);
+    }
+  }
+  return soonest;
+}
+
+type MaybeApiError = {
+  status?: number;
+  headers?: HeaderBag;
+  error?: { error?: { type?: string; message?: string } };
+  message?: string;
+};
+
+function friendlyApiError(err: unknown): string {
+  const raw =
+    err instanceof Error ? err.message : typeof err === "string" ? err : "";
+  const apiErr = (err ?? {}) as MaybeApiError;
+  const status = apiErr.status;
+  const type = apiErr.error?.error?.type ?? "";
+  const lower = (raw + " " + type).toLowerCase();
+
+  // Credit balance is a hard billing issue — no reset time will save us.
+  if (
+    lower.includes("credit balance") ||
+    lower.includes("billing") ||
+    lower.includes("quota")
+  ) {
+    return `Sorry — the Mews research account is out of API credits right now. Please reach out to Thomas Barvaux on Slack to top it up.`;
+  }
+
+  // Rate limit / overloaded — we can look up the reset time.
+  if (
+    status === 429 ||
+    status === 529 ||
+    lower.includes("rate_limit") ||
+    lower.includes("rate limit") ||
+    lower.includes("overloaded")
+  ) {
+    const reset = soonestReset(apiErr.headers);
+    const when = reset
+      ? `Please try again ${formatResetIn(reset)} (at ${reset.toLocaleTimeString(
+          "en-GB",
+          { hour: "2-digit", minute: "2-digit" },
+        )}).`
+      : "Please try again in 5 minutes.";
+    return `Sorry — we've hit Anthropic's request rate limit. ${when} ${SLACK_FALLBACK}`;
+  }
+
+  // Generic capacity-ish invalid_request_error
+  if (lower.includes("invalid_request_error")) {
+    return `Sorry — the request was rejected by the API. Please try again in 5 minutes. ${SLACK_FALLBACK}`;
+  }
+
+  return raw || "Unknown error";
 }
 
 // Pull the og:image (or twitter:image) from a website's HTML. The model's
@@ -466,7 +552,7 @@ Return only the JSON object, no prose, no code fences.`;
         finish();
       } catch (err) {
         const raw = err instanceof Error ? err.message : String(err);
-        const friendly = friendlyApiError(raw);
+        const friendly = friendlyApiError(err);
         send({ type: "error", error: friendly, raw });
         finish();
       }
