@@ -61,7 +61,7 @@ Name the specific feature — not "Mews can help". E.g. "Automatic settlement pa
 2. Prefer primary sources. Cite every non-obvious fact with a URL in the "sources" array.
 3. Never fabricate contacts, emails, LinkedIn URLs or ADR numbers. For contact emails and LinkedIn URLs follow the 95% rule strictly: only include the field when you're ≥95% confident. If you found the exact string on a public page, set email_confidence / linkedin_confidence to "verified". If you derived it from a naming pattern (e.g. firstname.lastname@hoteldomain.com) and it's still plausible, include it and mark it "guessed" — the UI will visibly label these so the salesperson knows to double-check. If you're below 95% confident, OMIT the field completely — do not emit a plausible placeholder. Never invent a source URL that you didn't actually visit.
 4. For ADR / occupancy, if no public figure exists, give a reasoned estimate based on segment + market + published rate ranges, and label it clearly as an estimate.
-5. For challenges, ground them in actual review themes, segment realities or recent news — not generic hotel problems. Whenever the evidence quotes or paraphrases a customer comment, press article or published source, populate \`evidence_url\` with the direct link to that exact page (not just the hotel homepage). Same for reputation themes: populate \`source_url\` on each positive/negative theme and on each recent_press entry with the direct review, article or thread URL.
+5. For reputation themes (positive and negative) and key_challenges: ONLY surface a theme/challenge if you can back it with TWO OR MORE verbatim guest quotes drawn from SEPARATE reviews. One-off complaints or compliments do NOT belong here — they mislead the salesperson into thinking a feeling is recurring when it isn't. For each theme/challenge, populate the \`quotes\` array with the actual word-for-word review snippets (never paraphrase, never summarise — copy the language guests actually used). Each quote object should carry \`source\` (e.g. "TripAdvisor", "Booking.com", "Google") and, when you have it, \`source_url\` linking to the specific review (not the hotel landing page — if you only have the hotel page URL, leave source_url empty). Aim for 2–4 quotes per theme; trim each to ~25 words but preserve original wording.
 6. For "mews_positioning", be specific to THIS hotel's situation and cite the Mews product line by name. No generic sales fluff.
 7. Always try to find ONE good hero image URL (hotel.hero_image_url): look for an og:image on the hotel's own homepage, a Booking.com / Expedia / brand-CDN photo URL, or a press-kit image. If you cannot verify one, omit the field — do not invent URLs.
 8. Always write a 1–2 sentence "tldr" for hotel.tldr — a crisp, journalist-style headline summary that a salesperson can read in 5 seconds.
@@ -373,10 +373,11 @@ Return only the JSON object, no prose, no code fences.`;
           // prompt and a capped number of web searches this keeps the
           // per-run cost in the single-digit-cents range.
           model: "claude-haiku-4-5",
-          // 8000 leaves headroom for the schema's optional URL fields
-          // (evidence_url / source_url) which can add ~1-2KB of text on
-          // a busy dossier with 10+ negative themes and key challenges.
-          max_tokens: 8000,
+          // 12000 leaves headroom for the verbatim quotes the schema now
+          // requires on every theme + challenge (2-4 ~25-word snippets
+          // each). On a busy dossier with 6 positive themes, 8 negative
+          // themes and 6 challenges that's ~60 quotes ≈ 4-5KB of text.
+          max_tokens: 12000,
           system: [
             {
               type: "text",
