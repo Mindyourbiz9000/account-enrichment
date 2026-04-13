@@ -1,5 +1,44 @@
 import React, { useState } from "react";
 
+/** A short customer/press quote with an optional link back to its source. */
+export type SourcedItem = {
+  text: string;
+  source_url?: string;
+};
+
+/** Normalise an entry that may be a bare string or {text, source_url}. */
+function normalizeSourced(
+  item: SourcedItem | string | undefined | null,
+): SourcedItem | null {
+  if (!item) return null;
+  if (typeof item === "string") return { text: item };
+  if (!item.text) return null;
+  return item;
+}
+
+/** Render a theme/press item; if it has a source_url, wrap the text in a link. */
+function SourcedText({
+  item,
+  className,
+}: {
+  item: SourcedItem;
+  className?: string;
+}) {
+  if (item.source_url) {
+    return (
+      <a
+        href={item.source_url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`underline decoration-dotted decoration-slate-400 underline-offset-2 hover:decoration-mews-500 hover:text-mews-700 ${className ?? ""}`}
+      >
+        {item.text}
+      </a>
+    );
+  }
+  return <span className={className}>{item.text}</span>;
+}
+
 export type HotelDossier = {
   hotel?: {
     name?: string;
@@ -38,13 +77,14 @@ export type HotelDossier = {
     tripadvisor_rating?: string;
     booking_rating?: string;
     review_volume?: string;
-    positive_themes?: string[];
-    negative_themes?: string[];
-    recent_press?: string[];
+    positive_themes?: Array<SourcedItem | string>;
+    negative_themes?: Array<SourcedItem | string>;
+    recent_press?: Array<SourcedItem | string>;
   };
   key_challenges?: Array<{
     challenge: string;
     evidence?: string;
+    evidence_url?: string;
     mews_angle?: string;
     payment_related?: boolean;
   }>;
@@ -127,6 +167,30 @@ function List({ items }: { items?: string[] }) {
       {items.map((it, i) => (
         <li key={i}>{it}</li>
       ))}
+    </ul>
+  );
+}
+
+/** Renders a bullet list where each item may link to a customer-review or
+ *  press source via {text, source_url}. Backwards-compatible with plain
+ *  strings. */
+function SourcedList({
+  items,
+}: {
+  items?: Array<SourcedItem | string>;
+}) {
+  if (!items || items.length === 0) return null;
+  return (
+    <ul className="list-disc list-inside space-y-1 text-sm text-slate-800">
+      {items.map((raw, i) => {
+        const item = normalizeSourced(raw);
+        if (!item) return null;
+        return (
+          <li key={i}>
+            <SourcedText item={item} />
+          </li>
+        );
+      })}
     </ul>
   );
 }
@@ -485,7 +549,18 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                         <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
                           Evidence
                         </span>
-                        {c.evidence}
+                        {c.evidence_url ? (
+                          <a
+                            href={c.evidence_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="underline decoration-dotted decoration-slate-400 underline-offset-2 hover:decoration-mews-500 hover:text-mews-700"
+                          >
+                            {c.evidence}
+                          </a>
+                        ) : (
+                          c.evidence
+                        )}
                       </div>
                     )}
                     {c.mews_angle && (
@@ -662,7 +737,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             <div className="text-xs uppercase tracking-wide text-emerald-600 mb-1">
               What guests love
             </div>
-            <List items={r.positive_themes} />
+            <SourcedList items={r.positive_themes} />
           </div>
         ) : null}
         {r.negative_themes?.length ? (
@@ -671,8 +746,10 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
               Recurring complaints
             </div>
             <ul className="space-y-1.5 text-sm">
-              {r.negative_themes.map((theme, i) => {
-                const isPayment = mentionsPayments(theme);
+              {r.negative_themes.map((raw, i) => {
+                const item = normalizeSourced(raw);
+                if (!item) return null;
+                const isPayment = mentionsPayments(item.text);
                 return (
                   <li
                     key={i}
@@ -689,7 +766,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                     >
                       •
                     </span>
-                    <span className="flex-1">{theme}</span>
+                    <SourcedText item={item} className="flex-1" />
                     {isPayment && <MewsPaymentsBadge />}
                   </li>
                 );
@@ -702,7 +779,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
               Recent press
             </div>
-            <List items={r.recent_press} />
+            <SourcedList items={r.recent_press} />
           </div>
         ) : null}
       </Section>
