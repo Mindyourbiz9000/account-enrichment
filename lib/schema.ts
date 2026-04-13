@@ -108,6 +108,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
             type: "string",
             description: "How Mews could address this specifically",
           },
+          payment_related: {
+            type: "boolean",
+            description:
+              "True if the challenge touches payments, billing, deposits, refunds, chargebacks, invoicing, reconciliation, tipping, POS charging, split folios, cash handling, card-on-file storage, currency conversion, or any other money-movement pain point. Err on the side of flagging true when payments are even partially implicated — this unlocks a highly differentiated Mews Payments pitch.",
+          },
         },
         required: ["challenge"],
         additionalProperties: false,

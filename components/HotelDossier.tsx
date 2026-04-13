@@ -46,6 +46,7 @@ export type HotelDossier = {
     challenge: string;
     evidence?: string;
     mews_angle?: string;
+    payment_related?: boolean;
   }>;
   contacts?: Array<{
     name?: string;
@@ -125,6 +126,36 @@ function List({ items }: { items?: string[] }) {
         <li key={i}>{it}</li>
       ))}
     </ul>
+  );
+}
+
+// Keyword fallback — Claude should set payment_related=true itself, but if it
+// forgets we still catch the obvious cases so payments always get highlighted.
+const PAYMENT_KEYWORDS =
+  /\b(payment|payments|billing|invoice|invoicing|charged?|chargeback|refund|deposit|prepayment|pre-?auth|card(\s|-)?on(\s|-)?file|credit\s?card|pci|folio|reconcil|pos\b|tip(ping)?|currency|fx|foreign\s?exchange|paid\s?twice|declined)\b/i;
+
+function mentionsPayments(text?: string): boolean {
+  return !!text && PAYMENT_KEYWORDS.test(text);
+}
+
+function MewsPaymentsBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-mews-600 text-black text-[10px] font-semibold px-2 py-0.5 uppercase tracking-wide">
+      <svg
+        className="h-3 w-3"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2.5}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"
+        />
+      </svg>
+      Mews Payments fit
+    </span>
   );
 }
 
@@ -339,35 +370,60 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
           subtitle={`${dossier.key_challenges.length} pain points to probe`}
         >
           <div className="space-y-3">
-            {dossier.key_challenges.map((c, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-slate-200 overflow-hidden"
-              >
-                <div className="bg-amber-50 border-b border-amber-100 px-4 py-2.5 font-semibold text-amber-900 text-sm flex items-start gap-2">
-                  <span className="text-amber-600 shrink-0">#{i + 1}</span>
-                  <span>{c.challenge}</span>
+            {dossier.key_challenges.map((c, i) => {
+              const isPayment =
+                c.payment_related === true ||
+                mentionsPayments(c.challenge) ||
+                mentionsPayments(c.evidence) ||
+                mentionsPayments(c.mews_angle);
+              const headerClass = isPayment
+                ? "bg-mews-50 border-b border-mews-100 text-mews-900"
+                : "bg-amber-50 border-b border-amber-100 text-amber-900";
+              const bulletClass = isPayment
+                ? "text-mews-700"
+                : "text-amber-600";
+              const cardBorder = isPayment
+                ? "border-mews-300 ring-1 ring-mews-100"
+                : "border-slate-200";
+              return (
+                <div
+                  key={i}
+                  className={`rounded-lg border overflow-hidden ${cardBorder}`}
+                >
+                  <div
+                    className={`px-4 py-2.5 font-semibold text-sm flex items-start gap-2 ${headerClass}`}
+                  >
+                    <span className={`shrink-0 ${bulletClass}`}>#{i + 1}</span>
+                    <span className="flex-1">{c.challenge}</span>
+                    {isPayment && <MewsPaymentsBadge />}
+                  </div>
+                  <div className="p-4 space-y-2 bg-white">
+                    {c.evidence && (
+                      <div className="text-sm text-slate-700">
+                        <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
+                          Evidence
+                        </span>
+                        {c.evidence}
+                      </div>
+                    )}
+                    {c.mews_angle && (
+                      <div
+                        className={`text-sm rounded p-2 ${
+                          isPayment
+                            ? "text-mews-900 bg-mews-50 border border-mews-100"
+                            : "text-mews-900 bg-mews-50"
+                        }`}
+                      >
+                        <span className="font-semibold text-mews-700 text-[10px] uppercase tracking-wide block mb-0.5">
+                          {isPayment ? "Mews Payments angle" : "Mews angle"}
+                        </span>
+                        {c.mews_angle}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="p-4 space-y-2 bg-white">
-                  {c.evidence && (
-                    <div className="text-sm text-slate-700">
-                      <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
-                        Evidence
-                      </span>
-                      {c.evidence}
-                    </div>
-                  )}
-                  {c.mews_angle && (
-                    <div className="text-sm text-mews-900 bg-mews-50 rounded p-2">
-                      <span className="font-semibold text-mews-700 text-[10px] uppercase tracking-wide block mb-0.5">
-                        Mews angle
-                      </span>
-                      {c.mews_angle}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Section>
       ) : null}
@@ -485,7 +541,31 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             <div className="text-xs uppercase tracking-wide text-red-600 mb-1">
               Recurring complaints
             </div>
-            <List items={r.negative_themes} />
+            <ul className="space-y-1.5 text-sm">
+              {r.negative_themes.map((theme, i) => {
+                const isPayment = mentionsPayments(theme);
+                return (
+                  <li
+                    key={i}
+                    className={
+                      isPayment
+                        ? "flex items-start gap-2 rounded-md bg-mews-50 border border-mews-100 px-2.5 py-1.5"
+                        : "flex items-start gap-2 text-slate-800"
+                    }
+                  >
+                    <span
+                      className={
+                        isPayment ? "text-mews-700 mt-0.5" : "text-slate-400"
+                      }
+                    >
+                      •
+                    </span>
+                    <span className="flex-1">{theme}</span>
+                    {isPayment && <MewsPaymentsBadge />}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ) : null}
         {r.recent_press?.length ? (
