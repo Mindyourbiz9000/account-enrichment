@@ -346,17 +346,14 @@ Cover everything the schema asks for: website, property profile, services (F&B, 
 Return only the JSON object, no prose, no code fences.`;
 
         const stream = client.messages.stream({
-          // Haiku 4.5 is ~3× cheaper than Sonnet on tokens and is plenty
-          // capable for web-grounded hotel research. Combined with prompt
-          // caching on the (large) system prompt and a capped number of
-          // web searches this keeps the per-run cost in the single-digit-
-          // cents range.
-          model: "claude-haiku-4-5",
-          // Tighter budget to stay under Anthropic's per-minute token + request
-          // rate limits. The Confluence-sourced Mews primer in the system
-          // prompt (cached) means Claude no longer needs to spend searches or
-          // tokens learning what Mews does — so we can safely shrink both
-          // max_tokens and max_uses without losing dossier quality.
+          // Sonnet 4.6 gives us a fresh per-model rate-limit bucket (Anthropic
+          // tracks TPM/RPM per model family), which is what we need after
+          // bumping into Haiku 4.5's per-minute ceiling. It also produces
+          // noticeably richer dossiers and better reasoning on the Mews
+          // positioning, which is where the sales team feels the quality.
+          // We keep the tight token + search budget to stay well under
+          // Sonnet's own (lower) TPM ceiling and contain cost.
+          model: "claude-sonnet-4-6",
           max_tokens: 6000,
           system: [
             {
