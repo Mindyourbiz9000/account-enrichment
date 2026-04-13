@@ -102,15 +102,14 @@ Cover everything the schema asks for: website, property profile, services (F&B, 
 Return only the JSON object, no prose, no code fences.`;
 
         const stream = client.messages.stream({
-          model: "claude-opus-4-6",
-          max_tokens: 16000,
-          thinking: { type: "adaptive" },
+          model: "claude-sonnet-4-6",
+          max_tokens: 10000,
           system: SYSTEM_PROMPT,
           tools: [
             {
               type: "web_search_20250305",
               name: "web_search",
-              max_uses: 12,
+              max_uses: 8,
             } as unknown as Anthropic.Messages.ToolUnion,
           ],
           messages: [{ role: "user", content: userPrompt }],
