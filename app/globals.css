@@ -8,44 +8,238 @@ body {
   background: linear-gradient(180deg, #faf9ff 0%, #f3f0ff 100%);
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Print stylesheet — we want a PDF that looks like a real sales dossier,
+   not a screenshot of the app. Strip shadows, rounded cards, collapsibles,
+   and the purple gradient. Use Mews pink as the single accent colour.
+   ──────────────────────────────────────────────────────────────────────── */
 @media print {
-  /* Hide everything except the dossier */
-  .no-print {
+  @page {
+    size: A4;
+    margin: 16mm 14mm 18mm 14mm;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10.5pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Ensure every <main> and nested container uses full width without any
+     max-width-driven centering that wastes horizontal space in print. */
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide live-app chrome */
+  .no-print,
+  .print-hide {
     display: none !important;
   }
 
-  body {
-    background: white;
+  /* Kill all shadows and fancy rounds. A PDF shouldn't try to look 3D. */
+  * {
+    box-shadow: none !important;
+  }
+  .rounded-2xl,
+  .rounded-xl,
+  .rounded-lg,
+  .rounded-md {
+    border-radius: 2px !important;
   }
 
-  /* Make sure collapsible sections are all open when printing */
-  details {
+  /* ── Cover / title block ─────────────────────────────────────────────── */
+  .print-cover {
     display: block !important;
+    border-bottom: 3px solid #ff83da;
+    padding-bottom: 10pt;
+    margin-bottom: 16pt;
+  }
+  .print-cover .eyebrow {
+    color: #ff83da;
+    font-size: 9pt;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .print-cover h1 {
+    color: #6b1045;
+    font-size: 22pt;
+    font-weight: 800;
+    line-height: 1.1;
+    margin: 6pt 0 4pt;
+    letter-spacing: -0.01em;
+  }
+  .print-cover .meta {
+    color: #475569;
+    font-size: 10pt;
   }
 
-  details > div {
-    display: block !important;
-  }
-
-  /* Prevent page breaks inside cards */
+  /* ── Collapsible sections: force open & restyle ─────────────────────── */
   details,
-  .avoid-break {
-    break-inside: avoid;
+  details > * {
+    display: block !important;
   }
-
-  /* The chevron is only useful when sections can collapse — hide in print */
+  details[open] > summary,
+  details > summary {
+    list-style: none !important;
+    cursor: default !important;
+    pointer-events: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+  }
   details summary svg {
     display: none !important;
   }
-
-  /* Tighter spacing in print */
-  details summary {
-    cursor: default !important;
+  details {
+    border: none !important;
+    background: transparent !important;
+    margin: 0 0 14pt !important;
+    padding: 0 !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  details summary h2 {
+    color: #6b1045 !important;
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    margin: 0 0 4pt !important;
+    padding-bottom: 3pt !important;
+    border-bottom: 1.5px solid #ff83da !important;
+  }
+  details summary > div > div:nth-child(2) {
+    /* subtitle */
+    color: #64748b !important;
+    font-size: 9pt !important;
+    margin: -2pt 0 6pt !important;
+  }
+  /* Space below summary header */
+  details > div {
+    padding: 6pt 0 0 !important;
   }
 
-  /* Make sure hero image doesn't blow up a page */
+  /* ── Hero card: compact horizontal strip ────────────────────────────── */
+  .hero-card {
+    grid-template-columns: 160px 1fr !important;
+    border: 1px solid #e2e8f0 !important;
+    background: #ffffff !important;
+    margin-bottom: 16pt !important;
+    page-break-inside: avoid;
+  }
+  .hero-card img {
+    max-height: 180px !important;
+    height: 180px !important;
+    object-fit: cover !important;
+  }
+  .hero-card .gradient-fallback {
+    min-height: 180px !important;
+  }
+  .hero-card .hero-content {
+    padding: 10pt 12pt !important;
+  }
+  .hero-card h1 {
+    font-size: 18pt !important;
+  }
+  .hero-card .tldr {
+    font-size: 10pt !important;
+    border-left: 2px solid #ff83da !important;
+    padding-left: 8pt !important;
+    margin: 6pt 0 !important;
+  }
+
+  /* Generic cards: give them a hairline border instead of shadow */
+  .avoid-break,
+  details > div > div,
+  table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Images — keep reasonable size */
   img {
-    max-height: 300px;
+    max-height: 220px;
     object-fit: cover;
+  }
+
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    font-size: 9.5pt !important;
+  }
+  th,
+  td {
+    border-bottom: 0.5px solid #e2e8f0 !important;
+    padding: 4pt 6pt !important;
+    vertical-align: top !important;
+  }
+  th {
+    background: #f8fafc !important;
+    color: #334155 !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    font-size: 8pt !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  /* Links: print the URL inline so the PDF is useful offline */
+  a[href^="http"]:after {
+    content: " (" attr(href) ")";
+    color: #94a3b8;
+    font-size: 0.85em;
+    word-break: break-all;
+  }
+  /* …but not inside links we render as labels (profile, website, email) */
+  a.no-print-url:after,
+  .hero-card a:after,
+  summary a:after {
+    content: "" !important;
+  }
+
+  /* Preserve Mews accent backgrounds but make them lighter for ink */
+  .bg-mews-50 {
+    background: #fff7fc !important;
+  }
+  .bg-mews-100 {
+    background: #ffe7f7 !important;
+  }
+  .bg-mews-600 {
+    background: #ff83da !important;
+  }
+
+  /* Badges should still read well */
+  [class*="bg-emerald-50"] {
+    background: #ecfdf5 !important;
+  }
+  [class*="bg-amber-50"] {
+    background: #fffbeb !important;
+  }
+
+  /* Footer with page numbers */
+  @page {
+    @bottom-right {
+      content: "Page " counter(page) " / " counter(pages);
+      font-size: 8pt;
+      color: #94a3b8;
+    }
+    @bottom-left {
+      content: "Mews Hotel Intelligence";
+      font-size: 8pt;
+      color: #94a3b8;
+    }
+  }
+
+  /* Avoid orphan/widow */
+  h1,
+  h2,
+  h3 {
+    page-break-after: avoid;
   }
 }

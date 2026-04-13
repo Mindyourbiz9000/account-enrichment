@@ -430,14 +430,24 @@ export default function Home() {
           </div>
 
           {/* Print-only header */}
-          <div className="hidden print:block mb-6">
-            <h1 className="text-2xl font-bold">
-              Mews Hotel Intelligence — {dossier.hotel?.name ?? hotelName}
-            </h1>
-            <p className="text-sm text-slate-500 mt-1">
-              {dossier.hotel?.city}, {dossier.hotel?.country} · Generated{" "}
-              {new Date().toLocaleDateString()}
-            </p>
+          <div className="print-cover hidden print:block">
+            <div className="eyebrow">Mews · Hotel Intelligence Dossier</div>
+            <h1>{dossier.hotel?.name ?? hotelName}</h1>
+            <div className="meta">
+              {[dossier.hotel?.city, dossier.hotel?.country]
+                .filter(Boolean)
+                .join(", ")}
+              {dossier.hotel?.segment ? ` · ${dossier.hotel.segment}` : ""}
+              {dossier.hotel?.star_rating
+                ? ` · ${dossier.hotel.star_rating}`
+                : ""}
+              {" · Generated "}
+              {new Date().toLocaleDateString("en-GB", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
           </div>
 
           <HotelDossierView dossier={dossier} />

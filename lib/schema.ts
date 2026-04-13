@@ -128,8 +128,20 @@ export const HOTEL_RESEARCH_SCHEMA = {
           name: { type: "string" },
           role: { type: "string" },
           email: { type: "string" },
+          email_confidence: {
+            type: "string",
+            enum: ["verified", "guessed"],
+            description:
+              "'verified' only if the exact email is printed on a public page (hotel website, press release, conference bio, LinkedIn). 'guessed' if you constructed it from a naming pattern (firstname.lastname@domain). Omit the email field entirely if your confidence is <95%.",
+          },
           phone: { type: "string" },
           linkedin: { type: "string" },
+          linkedin_confidence: {
+            type: "string",
+            enum: ["verified", "guessed"],
+            description:
+              "'verified' only if you found the exact LinkedIn URL for this exact person. 'guessed' if you constructed the URL from a name. Omit the linkedin field entirely if your confidence is <95%.",
+          },
           source: {
             type: "string",
             description: "Where this contact was found",

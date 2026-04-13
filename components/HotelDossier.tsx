@@ -52,8 +52,10 @@ export type HotelDossier = {
     name?: string;
     role: string;
     email?: string;
+    email_confidence?: "verified" | "guessed";
     phone?: string;
     linkedin?: string;
+    linkedin_confidence?: "verified" | "guessed";
     source?: string;
   }>;
   tech_stack_signals?: Array<{
@@ -159,6 +161,58 @@ function MewsPaymentsBadge() {
   );
 }
 
+// Pull the first rating-shaped token out of the text so we can show a big
+// score + a small qualifier instead of one long line.
+function extractScore(text?: string): { score: string | null; rest: string } {
+  if (!text) return { score: null, rest: "" };
+  const rx =
+    /(\d+(?:\.\d+)?\s*(?:\+|)\s*(?:\/|out of)\s*(?:5|10)|\b\d(?:\.\d)?\/5\b|Travelers'?\s*Choice)/i;
+  const m = text.match(rx);
+  if (!m) return { score: null, rest: text.trim() };
+  const score = m[0].trim();
+  const idx = m.index ?? 0;
+  const rest = (text.slice(0, idx) + text.slice(idx + m[0].length))
+    .replace(/^\s*[,;:\-–—()]+\s*|\s*[,;:\-–—()]+\s*$/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+  return { score, rest };
+}
+
+function ReviewCard({
+  source,
+  text,
+  accent,
+}: {
+  source: string;
+  text?: string;
+  accent: string; // tailwind text colour class
+}) {
+  const { score, rest } = extractScore(text);
+  return (
+    <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-3 min-h-[110px] avoid-break">
+      <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
+        {source}
+      </div>
+      {score ? (
+        <>
+          <div className={`text-xl font-bold leading-tight ${accent}`}>
+            {score}
+          </div>
+          {rest && (
+            <div className="text-xs text-slate-600 mt-1 leading-snug line-clamp-4">
+              {rest}
+            </div>
+          )}
+        </>
+      ) : (
+        <div className={`text-sm font-medium leading-snug ${accent}`}>
+          {text || "Not publicly disclosed"}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function StatPill({
   label,
   value,
@@ -194,10 +248,10 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
     .join(" · ");
 
   return (
-    <div className="avoid-break rounded-2xl overflow-hidden border border-slate-200 shadow-sm mb-6 bg-white">
+    <div className="hero-card avoid-break rounded-2xl overflow-hidden border border-slate-200 shadow-sm mb-6 bg-white">
       <div className="grid md:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         {/* Image / gradient */}
-        <div className="relative h-56 md:h-auto md:min-h-[240px] bg-gradient-to-br from-mews-100 via-mews-500 to-mews-700">
+        <div className="gradient-fallback relative h-56 md:h-auto md:min-h-[240px] bg-gradient-to-br from-mews-100 via-mews-500 to-mews-700">
           {showImg && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -215,7 +269,7 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
         </div>
 
         {/* Content */}
-        <div className="p-6 md:p-7 flex flex-col gap-3">
+        <div className="hero-content p-6 md:p-7 flex flex-col gap-3">
           <div>
             <h1 className="text-2xl md:text-3xl font-bold text-mews-900 leading-tight">
               {h.name ?? "Unknown hotel"}
@@ -229,7 +283,7 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
           </div>
 
           {h.tldr && (
-            <p className="text-sm text-slate-700 leading-relaxed border-l-2 border-mews-600 pl-3">
+            <p className="tldr text-sm text-slate-700 leading-relaxed border-l-2 border-mews-600 pl-3">
               {h.tldr}
             </p>
           )}
@@ -445,41 +499,67 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                 </tr>
               </thead>
               <tbody>
-                {dossier.contacts.map((c, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2 pr-4">{c.name ?? "—"}</td>
-                    <td className="py-2 pr-4">{c.role}</td>
-                    <td className="py-2 pr-4">
-                      {c.email ? (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="text-mews-600 underline"
-                        >
-                          {c.email}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {c.linkedin ? (
-                        <a
-                          href={c.linkedin}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-mews-600 underline"
-                        >
-                          profile
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {c.source ?? "—"}
-                    </td>
-                  </tr>
-                ))}
+                {dossier.contacts.map((c, i) => {
+                  const emailGuessed = c.email_confidence === "guessed";
+                  const linkedinGuessed = c.linkedin_confidence === "guessed";
+                  return (
+                    <tr key={i} className="border-b border-slate-100 align-top">
+                      <td className="py-2 pr-4">{c.name ?? "Unknown"}</td>
+                      <td className="py-2 pr-4">{c.role}</td>
+                      <td className="py-2 pr-4">
+                        {c.email ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {emailGuessed && (
+                              <span className="inline-block rounded bg-amber-100 text-amber-800 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
+                                guessed
+                              </span>
+                            )}
+                            <a
+                              href={`mailto:${c.email}`}
+                              className={
+                                emailGuessed
+                                  ? "text-amber-800 underline decoration-dotted"
+                                  : "text-mews-600 underline"
+                              }
+                            >
+                              {c.email}
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">unknown</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">
+                        {c.linkedin ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {linkedinGuessed && (
+                              <span className="inline-block rounded bg-amber-100 text-amber-800 text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5">
+                                guessed
+                              </span>
+                            )}
+                            <a
+                              href={c.linkedin}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={
+                                linkedinGuessed
+                                  ? "text-amber-800 underline decoration-dotted"
+                                  : "text-mews-600 underline"
+                              }
+                            >
+                              profile
+                            </a>
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 italic">unknown</span>
+                        )}
+                      </td>
+                      <td className="py-2 pr-4 text-slate-500">
+                        {c.source ?? "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -526,10 +606,31 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
 
       {/* ── Reputation ── */}
       <Section title="Reputation">
-        <Row label="Google" value={r.google_rating} />
-        <Row label="TripAdvisor" value={r.tripadvisor_rating} />
-        <Row label="Booking.com" value={r.booking_rating} />
-        <Row label="Review volume" value={r.review_volume} />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <ReviewCard
+            source="Google"
+            text={r.google_rating}
+            accent="text-emerald-700"
+          />
+          <ReviewCard
+            source="TripAdvisor"
+            text={r.tripadvisor_rating}
+            accent="text-emerald-700"
+          />
+          <ReviewCard
+            source="Booking.com"
+            text={r.booking_rating}
+            accent="text-blue-700"
+          />
+        </div>
+        {r.review_volume && (
+          <div className="text-xs text-slate-500 mb-2">
+            <span className="font-semibold text-slate-400 uppercase tracking-wide">
+              Volume:
+            </span>{" "}
+            {r.review_volume}
+          </div>
+        )}
         {r.positive_themes?.length ? (
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wide text-emerald-600 mb-1">
