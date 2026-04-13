@@ -44,6 +44,48 @@ Slow / confusing check-in or check-out; chargebacks; "was charged twice"; "card 
 
 For a 🟨 or 🟥-fit hotel, be honest about it in the dossier — don't force-fit Mews. Lead with the one product line that DOES fit (e.g. Payments or Guest Portal standalone, or a Multicurrency-only play).
 
+### Segment qualification cheat-sheet (Mews internal — fill \`mews_qualification\` from this)
+
+Use the matrix below to pick the right segment, surface fit signals (green) and red flags, and recommend the fastest disqualifying question. Quote the playbook verbatim where possible — sales reps know this shorthand.
+
+**General ICP (all segments)**
+- Sweet spot: independent / boutique, ~20–200 rooms, core Mews markets, high automation & guest experience focus, cloud-native mindset, open to Mews Payments + APIs.
+- Universal red flags: bespoke feature requests · franchise-mandated legacy PMS · refuses Mews Payments where required · regions without tech support (Brazil, India, China, South Africa) · low tech maturity / paper-based · 400–800+ rooms without standardised processes · no central owner / no pilot willingness.
+
+**Boutique & lifestyle hotels**
+- Green: packages & vouchers (F&B, spa, experiences) with clean folio reflection; simple POS integration (tips, split bills, tax granularity, digital ordering); per-day product inventory (cots, parking) at modest scale; small portfolios (1–10 properties) with central decision maker; guest-experience & CRM-driven upsells.
+- Red flags: complex packaging tax regimes (Germany/Nordics VAT splitting) we can't model; fully automated voucher lifecycle needed but POS has no API/two-way sync; external activity packages with no partner API; expects PMS to be a full CRM/marketing automation platform; per-hour dynamic inventory for large external providers.
+- Fastest check: ask for sample package list (SKUs + taxes), a guest folio, voucher lifecycle doc, and POS transaction examples.
+
+**Aparthotel / serviced apartments / long-stay**
+- Green: recurring monthly/weekly billing & automated invoicing; deposit lifecycle automation & compliant refunds; high % self-check-in, digital keys, kiosk ambition; corporate invoicing / multi-payer (company, tenant, government); wire/SEPA/BACS reconciliation; centralised housekeeping (Flexkeeping fit).
+- Red flags: rate mixing (multiple rate policies per reservation with conflicting rules); doorlock vendor requires PINs stored in PMS (security blocker); open-end reservations + fully automated invoicing with no mapped lifecycle; many Airbnb addresses/Host IDs with no consolidation or CM change willingness; local deposit/escrow laws we can't support; no central governance across many locations.
+- STR/Airbnb note: SiteMinder sponsors 1 free Airbnb address only; extras = $9–15/mo + $50 setup. Rentals United / RoomCloud / Cubilis are STR-specialist CMs.
+- Fastest check: confirm recurring billing method, deposit rules, doorlock vendor (PIN requirement?), and number of addresses/Host IDs.
+
+**Hostels & budget properties**
+- Green: bed-level inventory with parent→child room setup (dorms, bunks); group booking workflows & group check-in; staffless ops (kiosk, mobile check-in, digital keys, lockers); high turnover / same-day check-in with fast housekeeping; POS / snack-bar reconciliation.
+- Red flags: CM doesn't pass bed/space assignment AND prospect refuses to change CM; undefined room/bed classification; doorlock/locker vendor requires PINs in PMS; complex child/age pricing with many bands & per-bed exceptions; fully paper-based group workflows with no willingness to digitise; room assignment only at arrival.
+- Deal-breaker test: request the CM reservation payload — if it lacks a bed field and they won't change CM, that single data point kills the deal.
+
+**Resorts & leisure**
+- Green: unified platform replacing fragmented PMS/POS/spa/activity; package modelling (all-inclusive, half board, activity bundles) with folio mapping; per-day product inventory (cabanas, parking, tee times); group & events capability; board-plan & allowance automation.
+- Red flags: table booking flow required INSIDE BE that Product can't support; rate mixing within a single reservation; external activity packages with no partner API; complex child pricing with many age bands; 5★ ultra-luxury with bespoke concierge/CRM expectations; residential/semi-residential flows.
+- Fastest DQ: "Do you need table booking in the PMS BE or will POS manage tables?" — single fastest disqualifier for resorts.
+
+**Chain / multi-property (MMP)**
+- Green: centralised user rights (SAML/SSO, RBAC); central management of rate codes, promo codes, policy templates; multi-property reporting, dashboards, GL mapping; central reservations / CRS with pooled inventory; staged rollout willingness (1–50 properties/quarter); MMP BE (templating, provisioning, multi-currency, multi-tax).
+- Red flags: no central owner / each hotel acts independently; 100% custom config per property; expects instant live property creation with no QA/templating; every property uses bespoke integrations (POS/CM/locks); 200+ properties wanting all-in sprint with no pilot; highly custom country-specific GL outputs.
+- First question: "How many properties and what rollout cadence?" — drives everything. No named HQ owner = automatic DQ.
+
+**Cross-segment hard stops** (treat as blockers in any segment)
+1. Rate mixing within a single reservation
+2. Doorlock vendors requiring PINs stored in PMS/reservation
+3. No central owner + no pilot willingness
+4. External activity packages with no partner API and no reconciliation plan
+5. Complex child pricing with many age bands and per-product exceptions that can't be simplified
+6. Unsupported tax/compliance in the prospect's jurisdiction with no mitigation path
+
 ### Discovery approach (Discovery Conversation Guide)
 Populate \`mews_positioning.discovery_questions\` using the pain-funnel pattern: surface ("What's the biggest operational headache today?") → reasons ("How long, what have you tried?") → impact ("How much time/money / what does it cost you personally?"). Avoid feature-led yes/no questions. Keep them open and property-specific.
 
@@ -63,6 +105,7 @@ Name the specific feature — not "Mews can help". E.g. "Automatic settlement pa
 4. For ADR / occupancy, if no public figure exists, give a reasoned estimate based on segment + market + published rate ranges, and label it clearly as an estimate.
 5. For reputation themes (positive and negative) and key_challenges: ONLY surface a theme/challenge if you can back it with TWO OR MORE verbatim guest quotes drawn from SEPARATE reviews. One-off complaints or compliments do NOT belong here — they mislead the salesperson into thinking a feeling is recurring when it isn't. **RECENCY HARD RULE: only use reviews dated within the last 12 months from today.** Skip any review older than 12 months — even if a complaint was loud back then, an old review tells the salesperson nothing about the hotel's CURRENT operations. Sort review platforms by "most recent" before sampling, and check the visible date on each review (TripAdvisor, Booking and Google all show a posted date). If you cannot find at least 2 recent (≤12-month-old) reviews backing a theme, drop it. For each theme/challenge, populate the \`quotes\` array with the actual word-for-word review snippets (never paraphrase, never summarise — copy the language guests actually used). Each quote object should carry \`source\` (e.g. "TripAdvisor", "Booking.com", "Google"), the visible posted date in \`date\` (YYYY-MM or "Mar 2026" — whatever the platform shows), and, when you have it, \`source_url\` linking to the specific review (not the hotel landing page — if you only have the hotel page URL, leave source_url empty). Aim for 2–4 quotes per theme; trim each to ~25 words but preserve original wording.
 6. For "mews_positioning", be specific to THIS hotel's situation and cite the Mews product line by name. No generic sales fluff.
+6b. For "mews_qualification": pick the segment from the cheat-sheet (Boutique & lifestyle / Aparthotel / Hostel / Resort / Chain (MMP) / General), set a verdict ("🟩 strong fit", "🟨 limited fit", "🟥 poor fit", or "needs more discovery"), and populate fit_signals + red_flags by mapping the property's observed reality against the playbook's green / red lists. For each fit_signal and red_flag include a short \`evidence\` line citing what you observed (e.g. "F&B-heavy: 2 restaurants + lounge bar — packages will need clean folio reflection" or "200+ rooms, branded resort — 🟨 limited fit segment per playbook"). Mark red_flags as severity "blocker" if they are on the cross-segment hard-stop list or on the segment's deal-breaker list, otherwise "watch". Set fastest_dq_check to the single most useful question for this segment (use the cheat-sheet's "Fastest check" / "Fastest DQ" / "First question" verbatim where applicable). Be honest — if signals are mixed, say so.
 7. Always try to find ONE good hero image URL (hotel.hero_image_url): look for an og:image on the hotel's own homepage, a Booking.com / Expedia / brand-CDN photo URL, or a press-kit image. If you cannot verify one, omit the field — do not invent URLs.
 8. Always write a 1–2 sentence "tldr" for hotel.tldr — a crisp, journalist-style headline summary that a salesperson can read in 5 seconds.
 9. Be concise. The JSON should be rich but every field should earn its place — no filler.
