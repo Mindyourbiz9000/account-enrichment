@@ -52,6 +52,49 @@ Return a single JSON object — and NOTHING ELSE. No prose before or after. No m
 
 ${JSON.stringify(HOTEL_RESEARCH_SCHEMA, null, 2)}`;
 
+// Pull the og:image (or twitter:image) from a website's HTML. The model's
+// best guess at a hero_image_url is unreliable, so after research finishes
+// we fetch the hotel's own homepage and look up its social-preview image,
+// which is exactly the asset we want to show at the top of the dossier.
+async function fetchOgImage(pageUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(pageUrl, {
+      redirect: "follow",
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; MewsHotelIntelligence/1.0; +https://mews.com)",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!res.ok) return null;
+    const html = (await res.text()).slice(0, 200_000); // cap: <head> is always near the top
+    const patterns = [
+      /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]*content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+      /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]*content=["']([^"']+)["']/i,
+      /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+    ];
+    for (const re of patterns) {
+      const m = html.match(re);
+      if (m?.[1]) {
+        let img = m[1].trim();
+        // Resolve protocol-relative and root-relative URLs.
+        if (img.startsWith("//")) img = "https:" + img;
+        else if (img.startsWith("/")) {
+          const origin = new URL(pageUrl).origin;
+          img = origin + img;
+        }
+        return img;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function extractJson(text: string): unknown {
   try {
     return JSON.parse(text);
@@ -354,6 +397,39 @@ Return only the JSON object, no prose, no code fences.`;
           });
           finish();
           return;
+        }
+
+        // Enrich the dossier with a real hero image pulled from the hotel's
+        // own site (og:image / twitter:image). This is far more reliable than
+        // asking the model to guess a URL.
+        const d = dossier as {
+          hotel?: { website?: string; hero_image_url?: string };
+        } | null;
+        const website = d?.hotel?.website;
+        if (website) {
+          send({
+            type: "log",
+            level: "result",
+            message: "Fetching hero image from hotel site…",
+            t: elapsed(),
+          });
+          const ogImage = await fetchOgImage(website);
+          if (ogImage && d?.hotel) {
+            d.hotel.hero_image_url = ogImage;
+            send({
+              type: "log",
+              level: "result",
+              message: `Hero image: ${ogImage.slice(0, 80)}${ogImage.length > 80 ? "…" : ""}`,
+              t: elapsed(),
+            });
+          } else {
+            send({
+              type: "log",
+              level: "warn",
+              message: "No og:image found on hotel site — using fallback",
+              t: elapsed(),
+            });
+          }
         }
 
         send({
