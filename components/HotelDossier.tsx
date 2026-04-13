@@ -5,6 +5,7 @@ export type GuestQuote = {
   text: string;
   source?: string;
   source_url?: string;
+  date?: string;
 };
 
 /** A theme/complaint that the model only surfaces when ≥2 quotes back it. */
@@ -54,9 +55,10 @@ function SupportingQuotes({
             <span className="text-slate-400">“</span>
             <span className="italic">{q.text}</span>
             <span className="text-slate-400">”</span>
-            {(q.source || q.source_url) && (
+            {(q.source || q.source_url || q.date) && (
               <span className="block mt-0.5 text-[10.5px] text-slate-500">
-                — {q.source_url ? (
+                —{" "}
+                {q.source_url ? (
                   <a
                     href={q.source_url}
                     target="_blank"
@@ -67,6 +69,12 @@ function SupportingQuotes({
                   </a>
                 ) : (
                   q.source
+                )}
+                {q.date && (
+                  <span className="text-slate-400">
+                    {q.source || q.source_url ? ", " : ""}
+                    {q.date}
+                  </span>
                 )}
               </span>
             )}
