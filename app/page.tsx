@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { HotelDossierView, HotelDossier } from "@/components/HotelDossier";
 
 type LogEntry = {
@@ -31,7 +31,7 @@ const LEVEL_META: Record<
   search: { label: "SEARCH", className: "bg-blue-100 text-blue-700" },
   result: { label: "RESULT", className: "bg-emerald-100 text-emerald-700" },
   compose: { label: "WRITE", className: "bg-slate-200 text-slate-700" },
-  done: { label: "DONE", className: "bg-mews-600 text-white" },
+  done: { label: "DONE", className: "bg-mews-600 text-black" },
   warn: { label: "WARN", className: "bg-red-100 text-red-700" },
 };
 
@@ -56,6 +56,10 @@ export default function Home() {
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [logs, thinking]);
+
+  const handleExportPdf = useCallback(() => {
+    window.print();
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -134,10 +138,11 @@ export default function Home() {
   const showLogPanel = loading || logs.length > 0 || thinking.length > 0;
 
   return (
-    <main className="mx-auto max-w-5xl px-6 py-12">
-      <header className="mb-10">
+    <main className="mx-auto max-w-7xl px-6 py-12">
+      {/* ── Header ── */}
+      <header className="mb-10 no-print">
         <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-mews-600 flex items-center justify-center text-white font-bold text-lg">
+          <div className="h-10 w-10 rounded-xl bg-mews-600 flex items-center justify-center text-black font-bold text-lg">
             M
           </div>
           <div>
@@ -152,139 +157,147 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 mb-8">
-        <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-3">
-          <div className="md:col-span-3">
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Hotel name
-            </label>
-            <input
-              required
-              value={hotelName}
-              onChange={(e) => setHotelName(e.target.value)}
-              placeholder="e.g. Le Bristol Paris"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              City
-            </label>
-            <input
-              required
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              placeholder="Paris"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
-              Country
-            </label>
-            <input
-              required
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              placeholder="France"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
-            />
-          </div>
-          <div className="md:col-span-1 md:col-start-3 flex items-end">
+      {/* ── Top panel: form (left) + live log (right) ── */}
+      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-start" : ""}`}>
+        {/* Form */}
+        <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6">
+          <form onSubmit={onSubmit} className="grid gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Hotel name
+              </label>
+              <input
+                required
+                value={hotelName}
+                onChange={(e) => setHotelName(e.target.value)}
+                placeholder="e.g. Le Bristol Paris"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  City
+                </label>
+                <input
+                  required
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="Paris"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Country
+                </label>
+                <input
+                  required
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  placeholder="France"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-mews-500"
+                />
+              </div>
+            </div>
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-white font-medium py-2.5 transition"
+              className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition"
             >
               {loading ? "Researching…" : "Run deep research"}
             </button>
-          </div>
-        </form>
-      </section>
+          </form>
+        </section>
 
-      {showLogPanel && (
-        <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm mb-8 overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              </div>
-              <span className="text-xs uppercase tracking-wide text-slate-400">
-                Live research log
-              </span>
-              {loading && (
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  streaming
+        {/* Live log — only rendered when there's activity */}
+        {showLogPanel && (
+          <section className="rounded-2xl bg-slate-900 text-slate-100 shadow-sm overflow-hidden h-full">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                </div>
+                <span className="text-xs uppercase tracking-wide text-slate-400">
+                  Live research log
                 </span>
+                {loading && (
+                  <span className="text-xs text-slate-400 flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    streaming
+                  </span>
+                )}
+              </div>
+              {thinking && (
+                <button
+                  type="button"
+                  onClick={() => setShowThinking((v) => !v)}
+                  className="text-xs text-slate-300 hover:text-white underline decoration-dotted"
+                >
+                  {showThinking ? "Hide" : "Show"} thinking (
+                  {thinking.length.toLocaleString()} chars)
+                </button>
               )}
             </div>
-            {thinking && (
-              <button
-                type="button"
-                onClick={() => setShowThinking((v) => !v)}
-                className="text-xs text-slate-300 hover:text-white underline decoration-dotted"
-              >
-                {showThinking ? "Hide" : "Show"} thinking (
-                {thinking.length.toLocaleString()} chars)
-              </button>
-            )}
-          </div>
 
-          <div className="max-h-96 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
-            {logs.length === 0 && !thinking && (
-              <div className="text-slate-500">Waiting for the first event…</div>
-            )}
-            {logs.map((log, i) => {
-              const meta = LEVEL_META[log.level];
-              return (
-                <div key={i} className="mb-2">
-                  <div className="flex gap-2 items-start">
-                    {log.t && (
-                      <span className="text-slate-500 shrink-0 tabular-nums">
-                        {log.t.padStart(6)}
+            <div className="max-h-80 overflow-y-auto px-5 py-4 font-mono text-xs leading-relaxed">
+              {logs.length === 0 && !thinking && (
+                <div className="text-slate-500">
+                  Waiting for the first event…
+                </div>
+              )}
+              {logs.map((log, i) => {
+                const meta = LEVEL_META[log.level];
+                return (
+                  <div key={i} className="mb-2">
+                    <div className="flex gap-2 items-start">
+                      {log.t && (
+                        <span className="text-slate-500 shrink-0 tabular-nums">
+                          {log.t.padStart(6)}
+                        </span>
+                      )}
+                      <span
+                        className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${meta.className}`}
+                      >
+                        {meta.label}
                       </span>
+                      <span className="text-slate-100 break-words">
+                        {log.message}
+                      </span>
+                    </div>
+                    {log.results && log.results.length > 0 && (
+                      <ul className="ml-[5.5rem] mt-1 space-y-0.5 text-slate-400">
+                        {log.results.map((r, j) => (
+                          <li key={j} className="truncate">
+                            → {r.title || r.url}
+                          </li>
+                        ))}
+                      </ul>
                     )}
-                    <span
-                      className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold ${meta.className}`}
-                    >
-                      {meta.label}
-                    </span>
-                    <span className="text-slate-100 break-words">
-                      {log.message}
-                    </span>
                   </div>
-                  {log.results && log.results.length > 0 && (
-                    <ul className="ml-[5.5rem] mt-1 space-y-0.5 text-slate-400">
-                      {log.results.map((r, j) => (
-                        <li key={j} className="truncate">
-                          → {r.title || r.url}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                );
+              })}
+              {showThinking && thinking && (
+                <div className="mt-3 pt-3 border-t border-slate-700">
+                  <div className="text-[10px] uppercase tracking-wide text-amber-300 mb-1">
+                    thinking stream
+                  </div>
+                  <pre className="whitespace-pre-wrap text-slate-300 text-xs">
+                    {thinking}
+                  </pre>
                 </div>
-              );
-            })}
-            {showThinking && thinking && (
-              <div className="mt-3 pt-3 border-t border-slate-700">
-                <div className="text-[10px] uppercase tracking-wide text-amber-300 mb-1">
-                  thinking stream
-                </div>
-                <pre className="whitespace-pre-wrap text-slate-300 text-xs">
-                  {thinking}
-                </pre>
-              </div>
-            )}
-            <div ref={logEndRef} />
-          </div>
-        </section>
-      )}
+              )}
+              <div ref={logEndRef} />
+            </div>
+          </section>
+        )}
+      </div>
 
+      {/* ── Error ── */}
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 mb-6">
+        <div className="no-print rounded-xl border border-red-200 bg-red-50 p-4 text-red-800 mb-6">
           <div className="font-semibold mb-1">Error</div>
           <div className="text-sm whitespace-pre-wrap">{error}</div>
           {rawOutput && (
@@ -296,18 +309,55 @@ export default function Home() {
         </div>
       )}
 
-      {dossier && <HotelDossierView dossier={dossier} />}
+      {/* ── Dossier output ── */}
+      {dossier && (
+        <>
+          {/* Export bar */}
+          <div className="no-print flex items-center justify-between mb-4">
+            <div className="text-sm text-slate-500">
+              {elapsed && <span>Took {elapsed}</span>}
+              {usage && elapsed && <span className="mx-2">·</span>}
+              {usage && (
+                <span>
+                  {usage.input_tokens.toLocaleString()} in /{" "}
+                  {usage.output_tokens.toLocaleString()} out tokens
+                </span>
+              )}
+            </div>
+            <button
+              onClick={handleExportPdf}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition"
+            >
+              <svg
+                className="h-4 w-4 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export PDF
+            </button>
+          </div>
 
-      {(usage || elapsed) && (
-        <div className="mt-6 text-xs text-slate-400 flex gap-4">
-          {elapsed && <span>Took {elapsed}</span>}
-          {usage && (
-            <span>
-              {usage.input_tokens.toLocaleString()} in /{" "}
-              {usage.output_tokens.toLocaleString()} out tokens
-            </span>
-          )}
-        </div>
+          {/* Print-only header */}
+          <div className="hidden print:block mb-6">
+            <h1 className="text-2xl font-bold">
+              Mews Hotel Intelligence — {dossier.hotel?.name ?? hotelName}
+            </h1>
+            <p className="text-sm text-slate-500 mt-1">
+              {dossier.hotel?.city}, {dossier.hotel?.country} · Generated{" "}
+              {new Date().toLocaleDateString()}
+            </p>
+          </div>
+
+          <HotelDossierView dossier={dossier} />
+        </>
       )}
     </main>
   );
