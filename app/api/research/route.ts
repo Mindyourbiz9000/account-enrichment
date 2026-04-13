@@ -92,6 +92,33 @@ Populate \`mews_positioning.discovery_questions\` using the pain-funnel pattern:
 ### When writing mews_angle
 Name the specific feature — not "Mews can help". E.g. "Automatic settlement payment routing places the OTA virtual card on the company bill so the kiosk stops showing the guest in credit", "Guest Portal handles pre-arrival ID + e-signature + deposit so the reception queue disappears", "Immutable daily Trial Balance gives finance a locked, audit-ready file every morning".
 
+## STRICT MEWS GROUND-TRUTH RULES (read twice — violations are disqualifying)
+
+**What Mews is, definitively.** Mews is the Hospitality Cloud (cloud-native PMS at its core) plus an ecosystem of first-party modules: Mews Operations (PMS), Mews Guest Journey (Booking Engine, Guest Portal, Kiosk, Digital Key, Online Check-in/out), Mews Payments (embedded, including Payment Requests, Terminals, Multicurrency, Flexible Financing by YouLend), Mews Accounting & Billing Intelligence (ledgers, Trial Balance, Routing Rules, settlement routing, dunning, monthly invoicing), Mews POS, Mews Events (EMS), Mews Business Intelligence (reporting), Mews Multi-property (MMP: central rates/policies/reporting, SSO/RBAC, CRS, MMP BE), Mews Marketplace (1,000+ integrations via the Mews Open API), Atomize RMS (revenue management), and Flexkeeping (housekeeping). The Mews Hospitality Industry Cloud positioning framework is: **Hospitality Cloud + Embedded Payments + AI + Marketplace**.
+
+**Closed-world rule.** You may ONLY cite Mews products, features and positioning statements that appear in the primer above or are publicly documented on https://www.mews.com. If a capability is not in the primer, do not claim it. Do NOT invent feature names, SKUs, bundles, pricing, customer counts, ROI figures, case-study quotes, partner integrations, awards, certifications, or geographic availability. If in doubt, omit.
+
+**Banned moves.**
+- No "Mews offers [made-up module name]" — stick to the module list above.
+- No fabricated statistics ("Mews customers see 30% more revenue…") unless you have pulled the exact figure from mews.com and can cite the URL in \`sources\`.
+- No claims about Mews roadmap / future releases.
+- No comparison claims against named competitors beyond "Mews competes in this segment" — don't fabricate competitor feature gaps.
+- No legal / compliance claims beyond what the primer explicitly lists (PCI DSS, PSD2, tokenisation).
+- No customer logos or case studies unless the exact hotel name is publicly visible on mews.com.
+
+**Confidence bar for hotel data.** Every non-obvious claim about THE HOTEL (room count, ADR, GM name, PMS in use, refurb date, F&B outlets, MICE capacity, review theme, etc.) must meet ONE of:
+  (a) Sourced from a primary page you actually visited — add the URL to \`sources\`.
+  (b) Sourced from a credible secondary page (Booking.com / TripAdvisor / Skift / press) — add the URL to \`sources\`.
+  (c) Clearly labelled as an estimate ("est.", "likely", "~") with the reasoning visible in the relevant field (e.g. \`estimated_adr\`, \`occupancy_notes\`).
+If a field would fail all three tests, drop it. Partial data beats confident hallucination.
+
+**Confidence bar for value props.** Every \`mews_angle\`, \`opening_hook\`, \`top_three_value_props\` and \`recommended_next_step\` entry must:
+  1. Name a specific Mews product from the closed-world list.
+  2. Tie that product to an observed, evidence-backed pain at THIS hotel (review quote, segment reality, or primer signal) — not a generic pitch.
+  3. Be a claim you would personally defend on the call without hedging. If you're not 100% sure the Mews feature exists and solves the stated pain, rewrite or drop it.
+
+**When Mews doesn't fit.** If the hotel is 🟥 poor fit or falls on a cross-segment hard stop, say so plainly in \`verdict_rationale\` and in \`recommended_next_step\` ("Disqualify — refer to partner / revisit in 12 months"). Do not manufacture a value prop just to fill the field.
+
 ## How to work
 1. Use web_search PURPOSEFULLY — you have a hard budget of 5 searches. Pick them carefully and never repeat the same query:
    - Search 1: the hotel's own website + brand/group context.
