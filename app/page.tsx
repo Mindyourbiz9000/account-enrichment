@@ -57,6 +57,30 @@ export default function Home() {
     logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [logs, thinking]);
 
+  // Whenever the user prints (⌘P, browser menu, or our button) force every
+  // <details> open so no content is hidden. Restore prior state afterwards.
+  useEffect(() => {
+    let restoreFn: (() => void) | null = null;
+    const onBeforePrint = () => {
+      const els = Array.from(
+        document.querySelectorAll<HTMLDetailsElement>("details"),
+      );
+      const prev = els.map((el) => el.open);
+      els.forEach((el) => (el.open = true));
+      restoreFn = () => els.forEach((el, i) => (el.open = prev[i]));
+    };
+    const onAfterPrint = () => {
+      restoreFn?.();
+      restoreFn = null;
+    };
+    window.addEventListener("beforeprint", onBeforePrint);
+    window.addEventListener("afterprint", onAfterPrint);
+    return () => {
+      window.removeEventListener("beforeprint", onBeforePrint);
+      window.removeEventListener("afterprint", onAfterPrint);
+    };
+  }, []);
+
   // Tick a "waiting" timer while loading so the UI feels alive even when no
   // new log events are coming through yet.
   const [waitSeconds, setWaitSeconds] = useState(0);
@@ -80,7 +104,28 @@ export default function Home() {
   }, [logs.length, thinking]);
 
   const handleExportPdf = useCallback(() => {
-    window.print();
+    // Open every <details> in the dossier so the PDF captures every section
+    // in full. Remember each element's original state and restore after the
+    // print dialog closes.
+    const detailsEls = Array.from(
+      document.querySelectorAll<HTMLDetailsElement>("details"),
+    );
+    const prevStates = detailsEls.map((el) => el.open);
+    detailsEls.forEach((el) => {
+      el.open = true;
+    });
+
+    const restore = () => {
+      detailsEls.forEach((el, i) => {
+        el.open = prevStates[i];
+      });
+      window.removeEventListener("afterprint", restore);
+    };
+    window.addEventListener("afterprint", restore);
+
+    // Give the browser a tick to lay out the newly-opened sections before
+    // invoking the print dialog (some engines snapshot immediately).
+    setTimeout(() => window.print(), 50);
   }, []);
 
   async function onSubmit(e: React.FormEvent) {
