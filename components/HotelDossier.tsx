@@ -213,6 +213,10 @@ function ReviewCard({
   );
 }
 
+// Compact square tile used in the hero strip. Long verbose values like
+// "4.0 out of 5 (11 traveler reviews; ranked #1 of 3 specialty lodging)"
+// get split into a big score + a one-line subtitle so the tile stays
+// small and uniform across all sources.
 function StatPill({
   label,
   value,
@@ -223,14 +227,34 @@ function StatPill({
   accent?: string;
 }) {
   if (!value) return null;
+  const { score, rest } = extractScore(value);
+  // Headline = the score if we found one, otherwise a trimmed first clause
+  // of the value. Subtitle = whatever's left, capped to one line.
+  const headline = score ?? value.split(/[—–\-(;]/)[0].trim();
+  const subtitle = score
+    ? rest
+    : value.length > headline.length
+      ? value.slice(headline.length).replace(/^[\s—–\-(;:,]+/, "").trim()
+      : "";
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white/80 backdrop-blur px-3 py-2 min-w-[96px]">
+    <div className="flex flex-col justify-between rounded-xl border border-slate-200 bg-white/80 backdrop-blur px-3 py-2 min-h-[64px]">
       <span className="text-[10px] uppercase tracking-wide text-slate-500">
         {label}
       </span>
-      <span className={`text-sm font-semibold ${accent ?? "text-slate-900"}`}>
-        {value}
+      <span
+        className={`text-sm font-semibold leading-tight truncate ${accent ?? "text-slate-900"}`}
+        title={value}
+      >
+        {headline}
       </span>
+      {subtitle && (
+        <span
+          className="text-[10px] text-slate-500 leading-tight truncate"
+          title={subtitle}
+        >
+          {subtitle}
+        </span>
+      )}
     </div>
   );
 }
@@ -288,7 +312,9 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
             </p>
           )}
 
-          <div className="flex flex-wrap gap-2 mt-1">
+          {/* Compact stat grid — 3 small square-ish tiles per row so the
+              hero strip stays short. Long values truncate inside each tile. */}
+          <div className="grid grid-cols-3 gap-2 mt-1">
             <StatPill
               label="Google"
               value={r.google_rating}
