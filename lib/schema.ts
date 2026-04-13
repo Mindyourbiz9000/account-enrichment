@@ -85,13 +85,54 @@ export const HOTEL_RESEARCH_SCHEMA = {
         tripadvisor_rating: { type: "string" },
         booking_rating: { type: "string" },
         review_volume: { type: "string" },
-        positive_themes: { type: "array", items: { type: "string" } },
+        positive_themes: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              source_url: {
+                type: "string",
+                description:
+                  "Direct URL to a public source that backs this theme — the TripAdvisor / Booking / Google review page, a press article, or the hotel page itself. Omit only if no such URL can be cited.",
+              },
+            },
+            required: ["text"],
+            additionalProperties: false,
+          },
+        },
         negative_themes: {
           type: "array",
-          items: { type: "string" },
           description: "Recurring complaints / pain points in reviews",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              source_url: {
+                type: "string",
+                description:
+                  "Direct URL to a review / article quoting this complaint (TripAdvisor review, Booking review, news piece). Omit only if no such URL can be cited.",
+              },
+            },
+            required: ["text"],
+            additionalProperties: false,
+          },
         },
-        recent_press: { type: "array", items: { type: "string" } },
+        recent_press: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              text: { type: "string" },
+              source_url: {
+                type: "string",
+                description: "URL of the press article or announcement.",
+              },
+            },
+            required: ["text"],
+            additionalProperties: false,
+          },
+        },
       },
       additionalProperties: false,
     },
@@ -104,6 +145,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
         properties: {
           challenge: { type: "string" },
           evidence: { type: "string" },
+          evidence_url: {
+            type: "string",
+            description:
+              "Direct URL to the review / article / page that evidences this challenge (e.g. the specific TripAdvisor review, Booking complaint, or news piece). Include whenever the evidence quotes or paraphrases a customer comment or published source.",
+          },
           mews_angle: {
             type: "string",
             description: "How Mews could address this specifically",
