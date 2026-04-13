@@ -117,6 +117,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
                       description:
                         "Direct URL to the specific review (not the hotel landing page). Omit if you only have the platform's hotel listing.",
                     },
+                    date: {
+                      type: "string",
+                      description:
+                        "Visible posted date of the review on the platform (e.g. 'Mar 2026', '2026-02', 'Feb 14, 2026'). REQUIRED — only include reviews from the last 12 months.",
+                    },
                   },
                   required: ["text"],
                   additionalProperties: false,
@@ -148,6 +153,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
                     text: { type: "string" },
                     source: { type: "string" },
                     source_url: { type: "string" },
+                    date: {
+                      type: "string",
+                      description:
+                        "Visible posted date of the review (e.g. 'Mar 2026'). REQUIRED — only include reviews from the last 12 months.",
+                    },
                   },
                   required: ["text"],
                   additionalProperties: false,
@@ -216,6 +226,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
                   type: "string",
                   description:
                     "Direct URL to the specific review or article (not the hotel landing page). Omit if not available.",
+                },
+                date: {
+                  type: "string",
+                  description:
+                    "Visible posted date of the review or article (e.g. 'Mar 2026'). REQUIRED for guest reviews — only include reviews from the last 12 months.",
                 },
               },
               required: ["text"],
