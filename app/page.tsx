@@ -224,10 +224,14 @@ export default function Home() {
         </div>
       </header>
 
-      {/* ── Top panel: form (left) + live log (right) ── */}
-      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-stretch" : ""}`}>
+      {/* ── Top panel: form (left) + live log (right) ──
+           When the log is showing we lock both panels to the same fixed
+           height. The log scrolls internally (overflow-y-auto on its body)
+           rather than growing the row, so the form doesn't get stretched
+           taller and taller as new log entries stream in. */}
+      <div className={`no-print mb-8 ${showLogPanel ? "grid md:grid-cols-2 gap-6 items-stretch md:h-[28rem]" : ""}`}>
         {/* Form */}
-        <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col">
+        <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
           <form onSubmit={onSubmit} className="grid gap-4 flex-1">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
