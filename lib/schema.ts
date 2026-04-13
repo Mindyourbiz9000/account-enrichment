@@ -87,34 +87,74 @@ export const HOTEL_RESEARCH_SCHEMA = {
         review_volume: { type: "string" },
         positive_themes: {
           type: "array",
+          description:
+            "Recurring positive themes — only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
           items: {
             type: "object",
             properties: {
-              text: { type: "string" },
-              source_url: {
+              text: {
                 type: "string",
+                description: "Short summary of the recurring theme.",
+              },
+              quotes: {
+                type: "array",
                 description:
-                  "Direct URL to a public source that backs this theme — the TripAdvisor / Booking / Google review page, a press article, or the hotel page itself. Omit only if no such URL can be cited.",
+                  "TWO OR MORE verbatim, word-for-word guest quotes that back this theme. Never paraphrase. Trim to the most evocative ~25 words but keep the original wording.",
+                items: {
+                  type: "object",
+                  properties: {
+                    text: {
+                      type: "string",
+                      description: "The verbatim review snippet.",
+                    },
+                    source: {
+                      type: "string",
+                      description:
+                        "Platform name: 'TripAdvisor', 'Booking.com', 'Google', 'Expedia', etc.",
+                    },
+                    source_url: {
+                      type: "string",
+                      description:
+                        "Direct URL to the specific review (not the hotel landing page). Omit if you only have the platform's hotel listing.",
+                    },
+                  },
+                  required: ["text"],
+                  additionalProperties: false,
+                },
               },
             },
-            required: ["text"],
+            required: ["text", "quotes"],
             additionalProperties: false,
           },
         },
         negative_themes: {
           type: "array",
-          description: "Recurring complaints / pain points in reviews",
+          description:
+            "Recurring complaints — only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
           items: {
             type: "object",
             properties: {
-              text: { type: "string" },
-              source_url: {
+              text: {
                 type: "string",
+                description: "Short summary of the recurring complaint.",
+              },
+              quotes: {
+                type: "array",
                 description:
-                  "Direct URL to a review / article quoting this complaint (TripAdvisor review, Booking review, news piece). Omit only if no such URL can be cited.",
+                  "TWO OR MORE verbatim, word-for-word guest quotes that back this complaint. Never paraphrase.",
+                items: {
+                  type: "object",
+                  properties: {
+                    text: { type: "string" },
+                    source: { type: "string" },
+                    source_url: { type: "string" },
+                  },
+                  required: ["text"],
+                  additionalProperties: false,
+                },
               },
             },
-            required: ["text"],
+            required: ["text", "quotes"],
             additionalProperties: false,
           },
         },
@@ -139,16 +179,13 @@ export const HOTEL_RESEARCH_SCHEMA = {
     key_challenges: {
       type: "array",
       description:
-        "Top operational or commercial challenges this hotel likely faces, inferred from reviews, segment and market signals",
+        "Top operational or commercial challenges this hotel likely faces. Only include a challenge if you can back it with at least TWO verbatim guest quotes from separate reviews (or, exceptionally, one quote PLUS a published source). One-off complaints do not belong here.",
       items: {
         type: "object",
         properties: {
-          challenge: { type: "string" },
-          evidence: { type: "string" },
-          evidence_url: {
+          challenge: {
             type: "string",
-            description:
-              "Direct URL to the review / article / page that evidences this challenge (e.g. the specific TripAdvisor review, Booking complaint, or news piece). Include whenever the evidence quotes or paraphrases a customer comment or published source.",
+            description: "Short summary of the recurring challenge.",
           },
           mews_angle: {
             type: "string",
@@ -159,8 +196,34 @@ export const HOTEL_RESEARCH_SCHEMA = {
             description:
               "True if the challenge touches payments, billing, deposits, refunds, chargebacks, invoicing, reconciliation, tipping, POS charging, split folios, cash handling, card-on-file storage, currency conversion, or any other money-movement pain point. Err on the side of flagging true when payments are even partially implicated — this unlocks a highly differentiated Mews Payments pitch.",
           },
+          quotes: {
+            type: "array",
+            description:
+              "TWO OR MORE verbatim, word-for-word guest quotes (or press snippets) that back this challenge. Never paraphrase.",
+            items: {
+              type: "object",
+              properties: {
+                text: {
+                  type: "string",
+                  description: "The verbatim review or press snippet.",
+                },
+                source: {
+                  type: "string",
+                  description:
+                    "Platform or publication: 'TripAdvisor', 'Booking.com', 'Google', 'Skift', etc.",
+                },
+                source_url: {
+                  type: "string",
+                  description:
+                    "Direct URL to the specific review or article (not the hotel landing page). Omit if not available.",
+                },
+              },
+              required: ["text"],
+              additionalProperties: false,
+            },
+          },
         },
-        required: ["challenge"],
+        required: ["challenge", "quotes"],
         additionalProperties: false,
       },
     },

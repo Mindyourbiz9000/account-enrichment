@@ -1,42 +1,80 @@
 import React, { useState } from "react";
 
-/** A short customer/press quote with an optional link back to its source. */
-export type SourcedItem = {
+/** A verbatim guest quote with optional attribution. */
+export type GuestQuote = {
   text: string;
+  source?: string;
   source_url?: string;
 };
 
-/** Normalise an entry that may be a bare string or {text, source_url}. */
-function normalizeSourced(
-  item: SourcedItem | string | undefined | null,
-): SourcedItem | null {
-  if (!item) return null;
-  if (typeof item === "string") return { text: item };
-  if (!item.text) return null;
-  return item;
-}
+/** A theme/complaint that the model only surfaces when ≥2 quotes back it. */
+export type QuotedTheme = {
+  text: string;
+  quotes?: GuestQuote[];
+};
 
-/** Render a theme/press item; if it has a source_url, wrap the text in a link. */
-function SourcedText({
-  item,
-  className,
+/** Render an expandable list of verbatim guest quotes that back a theme or
+ *  challenge. The salesperson sees the summary first, then can drill into
+ *  the actual reviews to confirm it's a recurring pattern. */
+function SupportingQuotes({
+  quotes,
+  label = "Supporting reviews",
+  accent = "text-slate-500",
 }: {
-  item: SourcedItem;
-  className?: string;
+  quotes?: GuestQuote[];
+  label?: string;
+  accent?: string;
 }) {
-  if (item.source_url) {
-    return (
-      <a
-        href={item.source_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`underline decoration-dotted decoration-slate-400 underline-offset-2 hover:decoration-mews-500 hover:text-mews-700 ${className ?? ""}`}
+  const valid = (quotes ?? []).filter((q) => q && q.text);
+  if (valid.length === 0) return null;
+  return (
+    <details className="mt-1.5 group/quotes">
+      <summary
+        className={`cursor-pointer select-none text-[11px] uppercase tracking-wide ${accent} hover:text-slate-700 list-none [&::-webkit-details-marker]:hidden`}
       >
-        {item.text}
-      </a>
-    );
-  }
-  return <span className={className}>{item.text}</span>;
+        <span className="inline-flex items-center gap-1">
+          <svg
+            className="h-3 w-3 transition-transform group-open/quotes:rotate-90"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2.5}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+          {label} ({valid.length})
+        </span>
+      </summary>
+      <ul className="mt-2 space-y-1.5">
+        {valid.map((q, i) => (
+          <li
+            key={i}
+            className="rounded-md bg-slate-50 border border-slate-200 px-2.5 py-1.5 text-[12.5px] text-slate-700 leading-snug"
+          >
+            <span className="text-slate-400">“</span>
+            <span className="italic">{q.text}</span>
+            <span className="text-slate-400">”</span>
+            {(q.source || q.source_url) && (
+              <span className="block mt-0.5 text-[10.5px] text-slate-500">
+                — {q.source_url ? (
+                  <a
+                    href={q.source_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline decoration-dotted underline-offset-2 hover:text-mews-700"
+                  >
+                    {q.source ?? "source"}
+                  </a>
+                ) : (
+                  q.source
+                )}
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
 }
 
 export type HotelDossier = {
@@ -77,16 +115,19 @@ export type HotelDossier = {
     tripadvisor_rating?: string;
     booking_rating?: string;
     review_volume?: string;
-    positive_themes?: Array<SourcedItem | string>;
-    negative_themes?: Array<SourcedItem | string>;
-    recent_press?: Array<SourcedItem | string>;
+    positive_themes?: Array<QuotedTheme | string>;
+    negative_themes?: Array<QuotedTheme | string>;
+    recent_press?: Array<{ text: string; source_url?: string } | string>;
   };
   key_challenges?: Array<{
     challenge: string;
+    /** @deprecated kept for legacy dossiers; new ones use `quotes` */
     evidence?: string;
+    /** @deprecated kept for legacy dossiers; new ones use `quotes` */
     evidence_url?: string;
     mews_angle?: string;
     payment_related?: boolean;
+    quotes?: GuestQuote[];
   }>;
   contacts?: Array<{
     name?: string;
@@ -171,23 +212,45 @@ function List({ items }: { items?: string[] }) {
   );
 }
 
-/** Renders a bullet list where each item may link to a customer-review or
- *  press source via {text, source_url}. Backwards-compatible with plain
- *  strings. */
-function SourcedList({
+/** Normalise a positive/negative-theme entry from the legacy string shape
+ *  or the new {text, quotes[]} shape. */
+function normalizeTheme(
+  item: QuotedTheme | string | undefined | null,
+): QuotedTheme | null {
+  if (!item) return null;
+  if (typeof item === "string") return { text: item };
+  if (!item.text) return null;
+  return item;
+}
+
+/** Render a recent-press entry. We keep the inline link here because the
+ *  source URL IS the article — no quotes to fold under. */
+function PressList({
   items,
 }: {
-  items?: Array<SourcedItem | string>;
+  items?: Array<{ text: string; source_url?: string } | string>;
 }) {
   if (!items || items.length === 0) return null;
   return (
     <ul className="list-disc list-inside space-y-1 text-sm text-slate-800">
       {items.map((raw, i) => {
-        const item = normalizeSourced(raw);
+        const item =
+          typeof raw === "string" ? { text: raw } : raw && raw.text ? raw : null;
         if (!item) return null;
         return (
           <li key={i}>
-            <SourcedText item={item} />
+            {item.source_url ? (
+              <a
+                href={item.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-dotted decoration-slate-400 underline-offset-2 hover:text-mews-700"
+              >
+                {item.text}
+              </a>
+            ) : (
+              item.text
+            )}
           </li>
         );
       })}
@@ -521,7 +584,8 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                 c.payment_related === true ||
                 mentionsPayments(c.challenge) ||
                 mentionsPayments(c.evidence) ||
-                mentionsPayments(c.mews_angle);
+                mentionsPayments(c.mews_angle) ||
+                (c.quotes ?? []).some((q) => mentionsPayments(q.text));
               const headerClass = isPayment
                 ? "bg-mews-50 border-b border-mews-100 text-mews-900"
                 : "bg-amber-50 border-b border-amber-100 text-amber-900";
@@ -544,23 +608,26 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                     {isPayment && <MewsPaymentsBadge />}
                   </div>
                   <div className="p-4 space-y-2 bg-white">
-                    {c.evidence && (
+                    {/* Legacy dossiers (pre-quotes schema) carried a free-form
+                        "evidence" string; render it if present so old dossiers
+                        still display something. New dossiers populate `quotes`
+                        and skip this. */}
+                    {!c.quotes?.length && c.evidence && (
                       <div className="text-sm text-slate-700">
                         <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
                           Evidence
                         </span>
-                        {c.evidence_url ? (
-                          <a
-                            href={c.evidence_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="underline decoration-dotted decoration-slate-400 underline-offset-2 hover:decoration-mews-500 hover:text-mews-700"
-                          >
-                            {c.evidence}
-                          </a>
-                        ) : (
-                          c.evidence
-                        )}
+                        {c.evidence}
+                      </div>
+                    )}
+                    {c.quotes && c.quotes.length > 0 && (
+                      <div>
+                        <SupportingQuotes
+                          quotes={c.quotes}
+                          accent={
+                            isPayment ? "text-mews-700" : "text-amber-700"
+                          }
+                        />
                       </div>
                     )}
                     {c.mews_angle && (
@@ -735,9 +802,29 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         {r.positive_themes?.length ? (
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wide text-emerald-600 mb-1">
-              What guests love
+              Recurring praise
             </div>
-            <SourcedList items={r.positive_themes} />
+            <ul className="space-y-2 text-sm">
+              {r.positive_themes.map((raw, i) => {
+                const item = normalizeTheme(raw);
+                if (!item) return null;
+                return (
+                  <li
+                    key={i}
+                    className="rounded-md border border-emerald-100 bg-emerald-50/40 px-3 py-2"
+                  >
+                    <div className="flex items-start gap-2 text-slate-800">
+                      <span className="text-emerald-600 mt-0.5">•</span>
+                      <span className="flex-1">{item.text}</span>
+                    </div>
+                    <SupportingQuotes
+                      quotes={item.quotes}
+                      accent="text-emerald-700"
+                    />
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         ) : null}
         {r.negative_themes?.length ? (
@@ -745,9 +832,9 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             <div className="text-xs uppercase tracking-wide text-red-600 mb-1">
               Recurring complaints
             </div>
-            <ul className="space-y-1.5 text-sm">
+            <ul className="space-y-2 text-sm">
               {r.negative_themes.map((raw, i) => {
-                const item = normalizeSourced(raw);
+                const item = normalizeTheme(raw);
                 if (!item) return null;
                 const isPayment = mentionsPayments(item.text);
                 return (
@@ -755,19 +842,29 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                     key={i}
                     className={
                       isPayment
-                        ? "flex items-start gap-2 rounded-md bg-mews-50 border border-mews-100 px-2.5 py-1.5"
-                        : "flex items-start gap-2 text-slate-800"
+                        ? "rounded-md bg-mews-50 border border-mews-100 px-3 py-2"
+                        : "rounded-md border border-red-100 bg-red-50/40 px-3 py-2"
                     }
                   >
-                    <span
-                      className={
-                        isPayment ? "text-mews-700 mt-0.5" : "text-slate-400"
-                      }
+                    <div
+                      className={`flex items-start gap-2 ${isPayment ? "text-mews-900" : "text-slate-800"}`}
                     >
-                      •
-                    </span>
-                    <SourcedText item={item} className="flex-1" />
-                    {isPayment && <MewsPaymentsBadge />}
+                      <span
+                        className={
+                          isPayment
+                            ? "text-mews-700 mt-0.5"
+                            : "text-red-500 mt-0.5"
+                        }
+                      >
+                        •
+                      </span>
+                      <span className="flex-1">{item.text}</span>
+                      {isPayment && <MewsPaymentsBadge />}
+                    </div>
+                    <SupportingQuotes
+                      quotes={item.quotes}
+                      accent={isPayment ? "text-mews-700" : "text-red-700"}
+                    />
                   </li>
                 );
               })}
@@ -779,7 +876,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
               Recent press
             </div>
-            <SourcedList items={r.recent_press} />
+            <PressList items={r.recent_press} />
           </div>
         ) : null}
       </Section>
