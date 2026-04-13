@@ -144,15 +144,24 @@ function friendlyApiError(err: unknown): string {
   const apiErr = (err ?? {}) as MaybeApiError;
   const status = apiErr.status;
   const type = apiErr.error?.error?.type ?? "";
-  const lower = (raw + " " + type).toLowerCase();
+  const apiMessage = apiErr.error?.error?.message ?? "";
+  const lower = (raw + " " + type + " " + apiMessage).toLowerCase();
 
   // Credit balance is a hard billing issue — no reset time will save us.
+  // We deliberately DON'T match on "quota" here (too broad — Anthropic uses
+  // "quota" in several rate-limit contexts too). We only trigger this branch
+  // when the API explicitly says credit balance / billing / insufficient funds.
   if (
     lower.includes("credit balance") ||
-    lower.includes("billing") ||
-    lower.includes("quota")
+    lower.includes("insufficient_credit") ||
+    lower.includes("insufficient funds") ||
+    lower.includes("billing")
   ) {
-    return `Sorry — the Mews research account is out of API credits right now. Please reach out to Thomas Barvaux on Slack to top it up.`;
+    // Echo the raw Anthropic message so we can tell which workspace / key
+    // is actually being rejected — useful when credits have been topped up
+    // but the app is still using a key tied to a different workspace.
+    const detail = apiMessage ? ` (API said: "${apiMessage}")` : "";
+    return `Sorry — the Mews research account is out of API credits.${detail} If you just topped up, double-check that the ANTHROPIC_API_KEY on Vercel belongs to the same workspace you added credits to. Otherwise please reach out to Thomas Barvaux on Slack.`;
   }
 
   // Rate limit / overloaded — we can look up the reset time.
@@ -346,14 +355,11 @@ Cover everything the schema asks for: website, property profile, services (F&B, 
 Return only the JSON object, no prose, no code fences.`;
 
         const stream = client.messages.stream({
-          // Sonnet 4.6 gives us a fresh per-model rate-limit bucket (Anthropic
-          // tracks TPM/RPM per model family), which is what we need after
-          // bumping into Haiku 4.5's per-minute ceiling. It also produces
-          // noticeably richer dossiers and better reasoning on the Mews
-          // positioning, which is where the sales team feels the quality.
-          // We keep the tight token + search budget to stay well under
-          // Sonnet's own (lower) TPM ceiling and contain cost.
-          model: "claude-sonnet-4-6",
+          // Haiku 4.5 — cheapest per-token model capable of grounded hotel
+          // research. Combined with prompt caching on the (large) system
+          // prompt and a capped number of web searches this keeps the
+          // per-run cost in the single-digit-cents range.
+          model: "claude-haiku-4-5",
           max_tokens: 6000,
           system: [
             {
