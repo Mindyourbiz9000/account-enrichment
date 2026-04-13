@@ -515,6 +515,144 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
   );
 }
 
+/** Mews segment qualification — the primary deliverable of every dossier.
+ *  Renders verdict + rationale, fit signals (green) + red flags (red blockers
+ *  / amber watch-items), and the single fastest disqualifying question to
+ *  ask on the call. */
+function QualificationSection({
+  q,
+}: {
+  q: NonNullable<HotelDossier["mews_qualification"]>;
+}) {
+  return (
+    <Section
+      title="Mews qualification"
+      subtitle={
+        q.segment ? `Playbook segment: ${q.segment}` : "Segment fit & red flags"
+      }
+      defaultOpen
+    >
+      {q.verdict && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="text-base font-semibold text-slate-900">
+            {q.verdict}
+          </div>
+          {q.verdict_rationale && (
+            <div className="flex-1 text-sm text-slate-700 leading-snug">
+              {q.verdict_rationale}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {q.fit_signals?.length ? (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-emerald-700 mb-2 font-semibold">
+              Fit signals
+            </div>
+            <ul className="space-y-2">
+              {q.fit_signals.map((s, i) => (
+                <li
+                  key={i}
+                  className="rounded-md border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-sm"
+                >
+                  <div className="flex items-start gap-2 text-emerald-900">
+                    <span className="text-emerald-600 mt-0.5">✓</span>
+                    <span className="flex-1 font-medium">{s.signal}</span>
+                  </div>
+                  {s.evidence && (
+                    <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
+                      {s.evidence}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400 italic">
+            No clear fit signals surfaced.
+          </div>
+        )}
+
+        {q.red_flags?.length ? (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-red-700 mb-2 font-semibold">
+              Red flags
+            </div>
+            <ul className="space-y-2">
+              {q.red_flags.map((r, i) => {
+                const isBlocker = r.severity === "blocker";
+                return (
+                  <li
+                    key={i}
+                    className={
+                      isBlocker
+                        ? "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm"
+                        : "rounded-md border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm"
+                    }
+                  >
+                    <div
+                      className={
+                        isBlocker
+                          ? "flex items-start gap-2 text-red-900"
+                          : "flex items-start gap-2 text-amber-900"
+                      }
+                    >
+                      <span
+                        className={
+                          isBlocker
+                            ? "text-red-600 mt-0.5"
+                            : "text-amber-600 mt-0.5"
+                        }
+                      >
+                        {isBlocker ? "✕" : "!"}
+                      </span>
+                      <span className="flex-1 font-medium">{r.flag}</span>
+                      {r.severity && (
+                        <span
+                          className={
+                            isBlocker
+                              ? "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-red-200 text-red-800"
+                              : "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-200 text-amber-800"
+                          }
+                        >
+                          {r.severity}
+                        </span>
+                      )}
+                    </div>
+                    {r.evidence && (
+                      <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
+                        {r.evidence}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400 italic">
+            No red flags surfaced.
+          </div>
+        )}
+      </div>
+
+      {q.fastest_dq_check && (
+        <div className="mt-5 rounded-lg border border-mews-100 bg-mews-50 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-wide text-mews-700 font-semibold mb-1">
+            Fastest DQ question to ask
+          </div>
+          <div className="text-sm text-mews-900 leading-relaxed">
+            “{q.fastest_dq_check}”
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
 export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   const h = dossier.hotel ?? {};
   const p = dossier.property_profile ?? {};
@@ -524,6 +662,14 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   return (
     <div>
       <HeroCard dossier={dossier} />
+      {/* ── Mews qualification — primary deliverable, lead with it ── */}
+      {dossier.mews_qualification &&
+        (dossier.mews_qualification.segment ||
+          dossier.mews_qualification.verdict ||
+          dossier.mews_qualification.fit_signals?.length ||
+          dossier.mews_qualification.red_flags?.length) && (
+          <QualificationSection q={dossier.mews_qualification} />
+        )}
       {/* ── Mews positioning — top priority for sales team ── */}
       {dossier.mews_positioning && (
         <Section
@@ -595,143 +741,6 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
           )}
         </Section>
       )}
-
-      {/* ── Mews qualification (segment cheat-sheet match) ── */}
-      {dossier.mews_qualification &&
-        (dossier.mews_qualification.segment ||
-          dossier.mews_qualification.verdict ||
-          dossier.mews_qualification.fit_signals?.length ||
-          dossier.mews_qualification.red_flags?.length) && (
-          <Section
-            title="Mews qualification"
-            subtitle={
-              dossier.mews_qualification.segment
-                ? `Playbook segment: ${dossier.mews_qualification.segment}`
-                : "Segment fit & red flags"
-            }
-            defaultOpen
-          >
-            {dossier.mews_qualification.verdict && (
-              <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-base font-semibold text-slate-900">
-                  {dossier.mews_qualification.verdict}
-                </div>
-                {dossier.mews_qualification.verdict_rationale && (
-                  <div className="flex-1 text-sm text-slate-700 leading-snug">
-                    {dossier.mews_qualification.verdict_rationale}
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Fit signals */}
-              {dossier.mews_qualification.fit_signals?.length ? (
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-emerald-700 mb-2 font-semibold">
-                    Fit signals
-                  </div>
-                  <ul className="space-y-2">
-                    {dossier.mews_qualification.fit_signals.map((s, i) => (
-                      <li
-                        key={i}
-                        className="rounded-md border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-sm"
-                      >
-                        <div className="flex items-start gap-2 text-emerald-900">
-                          <span className="text-emerald-600 mt-0.5">✓</span>
-                          <span className="flex-1 font-medium">{s.signal}</span>
-                        </div>
-                        {s.evidence && (
-                          <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
-                            {s.evidence}
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-400 italic">
-                  No clear fit signals surfaced.
-                </div>
-              )}
-
-              {/* Red flags */}
-              {dossier.mews_qualification.red_flags?.length ? (
-                <div>
-                  <div className="text-xs uppercase tracking-wide text-red-700 mb-2 font-semibold">
-                    Red flags
-                  </div>
-                  <ul className="space-y-2">
-                    {dossier.mews_qualification.red_flags.map((r, i) => {
-                      const isBlocker = r.severity === "blocker";
-                      return (
-                        <li
-                          key={i}
-                          className={
-                            isBlocker
-                              ? "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm"
-                              : "rounded-md border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm"
-                          }
-                        >
-                          <div
-                            className={
-                              isBlocker
-                                ? "flex items-start gap-2 text-red-900"
-                                : "flex items-start gap-2 text-amber-900"
-                            }
-                          >
-                            <span
-                              className={
-                                isBlocker
-                                  ? "text-red-600 mt-0.5"
-                                  : "text-amber-600 mt-0.5"
-                              }
-                            >
-                              {isBlocker ? "✕" : "!"}
-                            </span>
-                            <span className="flex-1 font-medium">{r.flag}</span>
-                            {r.severity && (
-                              <span
-                                className={
-                                  isBlocker
-                                    ? "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-red-200 text-red-800"
-                                    : "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-200 text-amber-800"
-                                }
-                              >
-                                {r.severity}
-                              </span>
-                            )}
-                          </div>
-                          {r.evidence && (
-                            <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
-                              {r.evidence}
-                            </div>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              ) : (
-                <div className="text-sm text-slate-400 italic">
-                  No red flags surfaced.
-                </div>
-              )}
-            </div>
-
-            {dossier.mews_qualification.fastest_dq_check && (
-              <div className="mt-5 rounded-lg border border-mews-100 bg-mews-50 px-4 py-3">
-                <div className="text-[10px] uppercase tracking-wide text-mews-700 font-semibold mb-1">
-                  Fastest DQ question to ask
-                </div>
-                <div className="text-sm text-mews-900 leading-relaxed">
-                  “{dossier.mews_qualification.fastest_dq_check}”
-                </div>
-              </div>
-            )}
-          </Section>
-        )}
 
       {/* ── Key challenges ── */}
       {dossier.key_challenges?.length ? (

@@ -103,7 +103,13 @@ Name the specific feature — not "Mews can help". E.g. "Automatic settlement pa
 2. Prefer primary sources. Cite every non-obvious fact with a URL in the "sources" array.
 3. Never fabricate contacts, emails, LinkedIn URLs or ADR numbers. For contact emails and LinkedIn URLs follow the 95% rule strictly: only include the field when you're ≥95% confident. If you found the exact string on a public page, set email_confidence / linkedin_confidence to "verified". If you derived it from a naming pattern (e.g. firstname.lastname@hoteldomain.com) and it's still plausible, include it and mark it "guessed" — the UI will visibly label these so the salesperson knows to double-check. If you're below 95% confident, OMIT the field completely — do not emit a plausible placeholder. Never invent a source URL that you didn't actually visit.
 4. For ADR / occupancy, if no public figure exists, give a reasoned estimate based on segment + market + published rate ranges, and label it clearly as an estimate.
-5. For reputation themes (positive and negative) and key_challenges: ONLY surface a theme/challenge if you can back it with TWO OR MORE verbatim guest quotes drawn from SEPARATE reviews. One-off complaints or compliments do NOT belong here — they mislead the salesperson into thinking a feeling is recurring when it isn't. **RECENCY HARD RULE: only use reviews dated within the last 12 months from today.** Skip any review older than 12 months — even if a complaint was loud back then, an old review tells the salesperson nothing about the hotel's CURRENT operations. Sort review platforms by "most recent" before sampling, and check the visible date on each review (TripAdvisor, Booking and Google all show a posted date). If you cannot find at least 2 recent (≤12-month-old) reviews backing a theme, drop it. For each theme/challenge, populate the \`quotes\` array with the actual word-for-word review snippets (never paraphrase, never summarise — copy the language guests actually used). Each quote object should carry \`source\` (e.g. "TripAdvisor", "Booking.com", "Google"), the visible posted date in \`date\` (YYYY-MM or "Mar 2026" — whatever the platform shows), and, when you have it, \`source_url\` linking to the specific review (not the hotel landing page — if you only have the hotel page URL, leave source_url empty). Aim for 2–4 quotes per theme; trim each to ~25 words but preserve original wording.
+5. PRIMARY DELIVERABLE: \`mews_qualification\` and \`mews_positioning\` — spend the bulk of your output budget there. Reviews and quotes are SUPPORTING evidence, not the headline.
+   Reputation + key_challenges rules:
+   - Cap output: at most 3 positive_themes, 3 negative_themes, and 4 key_challenges. Pick the MOST recurring + the most segment-relevant ones; drop the rest.
+   - Each theme/challenge needs at least 2 backing reviews to count as recurring (one-offs do not belong), but only emit EXACTLY 2 verbatim quotes per item — pick the two punchiest. Never paraphrase; copy the exact wording.
+   - **RECENCY HARD RULE**: only use reviews dated within the last 12 months from today. Skip older reviews even if they were loud — they don't reflect current operations. Check the posted date visible on each review.
+   - Trim each quote to ≤20 words while preserving the original phrasing. Cut filler and prefer evocative fragments.
+   - Each quote object carries \`source\` ("TripAdvisor", "Booking.com", "Google"), \`date\` (e.g. "Mar 2026"), and \`source_url\` ONLY when you have the direct URL to the specific review (not the hotel landing page). Skip source_url otherwise.
 6. For "mews_positioning", be specific to THIS hotel's situation and cite the Mews product line by name. No generic sales fluff.
 6b. For "mews_qualification": pick the segment from the cheat-sheet (Boutique & lifestyle / Aparthotel / Hostel / Resort / Chain (MMP) / General), set a verdict ("🟩 strong fit", "🟨 limited fit", "🟥 poor fit", or "needs more discovery"), and populate fit_signals + red_flags by mapping the property's observed reality against the playbook's green / red lists. For each fit_signal and red_flag include a short \`evidence\` line citing what you observed (e.g. "F&B-heavy: 2 restaurants + lounge bar — packages will need clean folio reflection" or "200+ rooms, branded resort — 🟨 limited fit segment per playbook"). Mark red_flags as severity "blocker" if they are on the cross-segment hard-stop list or on the segment's deal-breaker list, otherwise "watch". Set fastest_dq_check to the single most useful question for this segment (use the cheat-sheet's "Fastest check" / "Fastest DQ" / "First question" verbatim where applicable). Be honest — if signals are mixed, say so.
 7. Always try to find ONE good hero image URL (hotel.hero_image_url): look for an og:image on the hotel's own homepage, a Booking.com / Expedia / brand-CDN photo URL, or a press-kit image. If you cannot verify one, omit the field — do not invent URLs.
@@ -416,11 +422,11 @@ Return only the JSON object, no prose, no code fences.`;
           // prompt and a capped number of web searches this keeps the
           // per-run cost in the single-digit-cents range.
           model: "claude-haiku-4-5",
-          // 12000 leaves headroom for the verbatim quotes the schema now
-          // requires on every theme + challenge (2-4 ~25-word snippets
-          // each). On a busy dossier with 6 positive themes, 8 negative
-          // themes and 6 challenges that's ~60 quotes ≈ 4-5KB of text.
-          max_tokens: 12000,
+          // 8000 fits comfortably now that themes/challenges are capped
+          // (3+3 themes × 2 short quotes + 4 challenges × 2 short quotes
+          // ≈ 20 quotes ≈ 1.5KB) and the bulk of the budget can go to
+          // the qualification + positioning sections.
+          max_tokens: 8000,
           system: [
             {
               type: "text",
