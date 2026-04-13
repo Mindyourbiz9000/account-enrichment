@@ -22,6 +22,11 @@ export const HOTEL_RESEARCH_SCHEMA = {
         },
         star_rating: { type: "string" },
         address: { type: "string" },
+        phone: {
+          type: "string",
+          description:
+            "Main reception / reservations phone number in a human-readable form with country code (e.g. '+32 4 222 00 00'). Pull it from the hotel's own contact page when possible; fall back to Google Business / Booking.com only if the official site doesn't publish it. Omit if you cannot verify it.",
+        },
         hero_image_url: {
           type: "string",
           description:

@@ -1,5 +1,74 @@
 import React, { useState } from "react";
 
+/** Phone number with a clickable "tel:" link and a copy-to-clipboard
+ *  button. Shows a brief "Copied!" confirmation on success. Hidden in
+ *  print (the PDF doesn't need an interactive copy button). */
+function CopyablePhone({
+  phone,
+  className = "",
+  linkClassName = "text-mews-700 underline decoration-dotted",
+}: {
+  phone: string;
+  className?: string;
+  linkClassName?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(phone);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard API can fail on insecure contexts — silently ignore
+    }
+  };
+  return (
+    <span className={`inline-flex items-center gap-1.5 ${className}`}>
+      <a href={`tel:${phone.replace(/\s+/g, "")}`} className={linkClassName}>
+        {phone}
+      </a>
+      <button
+        type="button"
+        onClick={handleCopy}
+        aria-label={copied ? "Copied" : "Copy phone number"}
+        title={copied ? "Copied!" : "Copy"}
+        className="no-print inline-flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:text-mews-700 hover:bg-slate-100 transition"
+      >
+        {copied ? (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3.5 w-3.5 text-emerald-600"
+            aria-hidden="true"
+          >
+            <polyline points="20 6 9 17 4 12" />
+          </svg>
+        ) : (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+          >
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+          </svg>
+        )}
+      </button>
+    </span>
+  );
+}
+
 /** A verbatim guest quote with optional attribution. */
 export type GuestQuote = {
   text: string;
@@ -95,6 +164,7 @@ export type HotelDossier = {
     segment?: string;
     star_rating?: string;
     address?: string;
+    phone?: string;
     hero_image_url?: string;
     tldr?: string;
   };
@@ -499,16 +569,25 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
             />
           </div>
 
-          {h.website && (
-            <a
-              href={h.website}
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-mews-700 underline decoration-dotted mt-1 self-start break-all"
-            >
-              {h.website}
-            </a>
-          )}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+            {h.website && (
+              <a
+                href={h.website}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs text-mews-700 underline decoration-dotted break-all"
+              >
+                {h.website}
+              </a>
+            )}
+            {h.phone && (
+              <CopyablePhone
+                phone={h.phone}
+                className="text-xs"
+                linkClassName="text-mews-700 underline decoration-dotted"
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>
@@ -957,6 +1036,14 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
           value={[h.city, h.country].filter(Boolean).join(", ")}
         />
         <Row label="Address" value={h.address} />
+        <Row
+          label="Phone"
+          value={
+            h.phone ? (
+              <CopyablePhone phone={h.phone} linkClassName="text-mews-600 underline" />
+            ) : undefined
+          }
+        />
         <Row
           label="Website"
           value={
