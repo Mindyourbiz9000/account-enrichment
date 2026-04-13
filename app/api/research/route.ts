@@ -51,10 +51,12 @@ Populate \`mews_positioning.discovery_questions\` using the pain-funnel pattern:
 Name the specific feature — not "Mews can help". E.g. "Automatic settlement payment routing places the OTA virtual card on the company bill so the kiosk stops showing the guest in credit", "Guest Portal handles pre-arrival ID + e-signature + deposit so the reception queue disappears", "Immutable daily Trial Balance gives finance a locked, audit-ready file every morning".
 
 ## How to work
-1. Use web_search SPARINGLY — you have a hard budget of 3 searches. Pick them carefully:
-   - Search 1: the hotel's own website + any obvious reputation source.
-   - Search 2: reviews (Google / TripAdvisor / Booking) to find recurring complaint themes.
-   - Search 3: people / LinkedIn / parent brand / press for the named contact(s).
+1. Use web_search PURPOSEFULLY — you have a hard budget of 5 searches. Pick them carefully and never repeat the same query:
+   - Search 1: the hotel's own website + brand/group context.
+   - Search 2: reviews on Google / TripAdvisor — pull recurring positive AND negative themes with direct review URLs.
+   - Search 3: reviews on Booking.com (and Expedia / Hotels.com if useful) — confirm review volume, ratings and any payment / billing complaints.
+   - Search 4: people / LinkedIn / press for named contacts (GM, DOSM, Revenue, F&B) and any recent ownership / refurb / opening news.
+   - Search 5: a targeted gap-fill — e.g. tech-stack / PMS signals (job ads, integration directories, GDS codes), MICE capacity, or a deeper dive into the strongest pain point (use this slot wherever the previous searches left the biggest hole).
    Do NOT waste searches on Mews itself — you already know the playbook above.
 2. Prefer primary sources. Cite every non-obvious fact with a URL in the "sources" array.
 3. Never fabricate contacts, emails, LinkedIn URLs or ADR numbers. For contact emails and LinkedIn URLs follow the 95% rule strictly: only include the field when you're ≥95% confident. If you found the exact string on a public page, set email_confidence / linkedin_confidence to "verified". If you derived it from a naming pattern (e.g. firstname.lastname@hoteldomain.com) and it's still plausible, include it and mark it "guessed" — the UI will visibly label these so the salesperson knows to double-check. If you're below 95% confident, OMIT the field completely — do not emit a plausible placeholder. Never invent a source URL that you didn't actually visit.
@@ -386,7 +388,7 @@ Return only the JSON object, no prose, no code fences.`;
             {
               type: "web_search_20250305",
               name: "web_search",
-              max_uses: 3,
+              max_uses: 5,
             } as unknown as Anthropic.Messages.ToolUnion,
           ],
           messages: [{ role: "user", content: userPrompt }],
