@@ -223,12 +223,13 @@ export default function Home() {
       </header>
 
       {/* ── Top panel: form (left) + live log (right) ──
-           Both panels are ALWAYS rendered side-by-side at the same fixed
-           height. Before research starts the right panel shows an idle
-           placeholder, so clicking "Run deep research" doesn't cause any
-           reflow / size change — the form stays put, the log just lights
-           up in place. The log scrolls internally as entries stream in. */}
-      <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch md:h-[28rem]">
+           Both panels are always rendered side-by-side. The grid uses
+           items-stretch so the log panel automatically matches the form's
+           natural height — i.e. just enough for 3 inputs and a button. As
+           log entries stream in the right panel scrolls internally
+           (overflow-y-auto on its body) instead of growing the row, so
+           the form panel stays exactly the same size from idle to done. */}
+      <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
           <form onSubmit={onSubmit} className="grid gap-4 flex-1">
