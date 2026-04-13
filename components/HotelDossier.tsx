@@ -653,6 +653,49 @@ function QualificationSection({
   );
 }
 
+/** Amber "AI-generated, validate before quoting" notice. Sits directly
+ *  under the hero card so it's the first thing a salesperson reads
+ *  before the qualification + positioning content below. Hidden in
+ *  print — the salesperson reading the PDF already knows. */
+function AiDisclaimerBanner() {
+  return (
+    <div
+      role="note"
+      aria-label="AI-generated content disclaimer"
+      className="no-print mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm"
+    >
+      <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-amber-100 text-amber-700">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div className="min-w-0 text-sm leading-relaxed">
+        <div className="font-semibold text-amber-900">
+          AI-generated — validate with the prospect before quoting
+        </div>
+        <div className="mt-0.5 text-amber-800">
+          This dossier is generated via AI search and is meant to{" "}
+          <span className="font-medium">help and guide</span> your
+          conversation — not to be the source of truth. Always confirm key
+          facts directly with the prospect.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   const h = dossier.hotel ?? {};
   const p = dossier.property_profile ?? {};
@@ -662,6 +705,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   return (
     <div>
       <HeroCard dossier={dossier} />
+      <AiDisclaimerBanner />
       {/* ── Mews qualification — primary deliverable, lead with it ── */}
       {dossier.mews_qualification &&
         (dossier.mews_qualification.segment ||
