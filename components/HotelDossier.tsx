@@ -297,6 +297,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         <Section
           title="Mews positioning"
           subtitle="What to lead with on the first call"
+          defaultOpen
         >
           {dossier.mews_positioning.opening_hook && (
             <div className="rounded-xl bg-mews-50 border border-mews-100 p-4 mb-5">
@@ -368,6 +369,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         <Section
           title="Key challenges"
           subtitle={`${dossier.key_challenges.length} pain points to probe`}
+          defaultOpen
         >
           <div className="space-y-3">
             {dossier.key_challenges.map((c, i) => {
