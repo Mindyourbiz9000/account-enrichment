@@ -515,6 +515,187 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
   );
 }
 
+/** Mews segment qualification — the primary deliverable of every dossier.
+ *  Renders verdict + rationale, fit signals (green) + red flags (red blockers
+ *  / amber watch-items), and the single fastest disqualifying question to
+ *  ask on the call. */
+function QualificationSection({
+  q,
+}: {
+  q: NonNullable<HotelDossier["mews_qualification"]>;
+}) {
+  return (
+    <Section
+      title="Mews qualification"
+      subtitle={
+        q.segment ? `Playbook segment: ${q.segment}` : "Segment fit & red flags"
+      }
+      defaultOpen
+    >
+      {q.verdict && (
+        <div className="mb-4 flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
+          <div className="text-base font-semibold text-slate-900">
+            {q.verdict}
+          </div>
+          {q.verdict_rationale && (
+            <div className="flex-1 text-sm text-slate-700 leading-snug">
+              {q.verdict_rationale}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {q.fit_signals?.length ? (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-emerald-700 mb-2 font-semibold">
+              Fit signals
+            </div>
+            <ul className="space-y-2">
+              {q.fit_signals.map((s, i) => (
+                <li
+                  key={i}
+                  className="rounded-md border border-emerald-100 bg-emerald-50/50 px-3 py-2 text-sm"
+                >
+                  <div className="flex items-start gap-2 text-emerald-900">
+                    <span className="text-emerald-600 mt-0.5">✓</span>
+                    <span className="flex-1 font-medium">{s.signal}</span>
+                  </div>
+                  {s.evidence && (
+                    <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
+                      {s.evidence}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400 italic">
+            No clear fit signals surfaced.
+          </div>
+        )}
+
+        {q.red_flags?.length ? (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-red-700 mb-2 font-semibold">
+              Red flags
+            </div>
+            <ul className="space-y-2">
+              {q.red_flags.map((r, i) => {
+                const isBlocker = r.severity === "blocker";
+                return (
+                  <li
+                    key={i}
+                    className={
+                      isBlocker
+                        ? "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm"
+                        : "rounded-md border border-amber-100 bg-amber-50/60 px-3 py-2 text-sm"
+                    }
+                  >
+                    <div
+                      className={
+                        isBlocker
+                          ? "flex items-start gap-2 text-red-900"
+                          : "flex items-start gap-2 text-amber-900"
+                      }
+                    >
+                      <span
+                        className={
+                          isBlocker
+                            ? "text-red-600 mt-0.5"
+                            : "text-amber-600 mt-0.5"
+                        }
+                      >
+                        {isBlocker ? "✕" : "!"}
+                      </span>
+                      <span className="flex-1 font-medium">{r.flag}</span>
+                      {r.severity && (
+                        <span
+                          className={
+                            isBlocker
+                              ? "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-red-200 text-red-800"
+                              : "shrink-0 px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-amber-200 text-amber-800"
+                          }
+                        >
+                          {r.severity}
+                        </span>
+                      )}
+                    </div>
+                    {r.evidence && (
+                      <div className="mt-1 ml-5 text-[12.5px] text-slate-600">
+                        {r.evidence}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : (
+          <div className="text-sm text-slate-400 italic">
+            No red flags surfaced.
+          </div>
+        )}
+      </div>
+
+      {q.fastest_dq_check && (
+        <div className="mt-5 rounded-lg border border-mews-100 bg-mews-50 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-wide text-mews-700 font-semibold mb-1">
+            Fastest DQ question to ask
+          </div>
+          <div className="text-sm text-mews-900 leading-relaxed">
+            “{q.fastest_dq_check}”
+          </div>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** Amber "AI-generated, validate before quoting" notice. Sits directly
+ *  under the hero card so it's the first thing a salesperson reads
+ *  before the qualification + positioning content below. Hidden in
+ *  print — the salesperson reading the PDF already knows. */
+function AiDisclaimerBanner() {
+  return (
+    <div
+      role="note"
+      aria-label="AI-generated content disclaimer"
+      className="no-print mb-6 flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 shadow-sm"
+    >
+      <div className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-amber-100 text-amber-700">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="h-4 w-4"
+          aria-hidden="true"
+        >
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+          <line x1="12" y1="9" x2="12" y2="13" />
+          <line x1="12" y1="17" x2="12.01" y2="17" />
+        </svg>
+      </div>
+      <div className="min-w-0 text-sm leading-relaxed">
+        <div className="font-semibold text-amber-900">
+          AI-generated — validate with the prospect before quoting
+        </div>
+        <div className="mt-0.5 text-amber-800">
+          This dossier is generated via AI search and is meant to{" "}
+          <span className="font-medium">help and guide</span> your
+          conversation — not to be the source of truth. Always confirm key
+          facts directly with the prospect.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   const h = dossier.hotel ?? {};
   const p = dossier.property_profile ?? {};
@@ -524,6 +705,15 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
   return (
     <div>
       <HeroCard dossier={dossier} />
+      <AiDisclaimerBanner />
+      {/* ── Mews qualification — primary deliverable, lead with it ── */}
+      {dossier.mews_qualification &&
+        (dossier.mews_qualification.segment ||
+          dossier.mews_qualification.verdict ||
+          dossier.mews_qualification.fit_signals?.length ||
+          dossier.mews_qualification.red_flags?.length) && (
+          <QualificationSection q={dossier.mews_qualification} />
+        )}
       {/* ── Mews positioning — top priority for sales team ── */}
       {dossier.mews_positioning && (
         <Section
