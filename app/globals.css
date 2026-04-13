@@ -103,6 +103,15 @@ body {
     background: transparent !important;
     margin: 0 0 14pt !important;
     padding: 0 !important;
+    /* Don't apply break-inside:avoid on the whole section — sections
+       with many cards (e.g. 6 key challenges) exceed a single page, and
+       avoiding a break on the wrapper just pushes the title to a blank
+       page. Instead we keep each child card atomic (see .avoid-break /
+       details > div > div below) and let the section flow. */
+  }
+  details summary {
+    break-after: avoid;
+    page-break-after: avoid;
     break-inside: avoid;
     page-break-inside: avoid;
   }
