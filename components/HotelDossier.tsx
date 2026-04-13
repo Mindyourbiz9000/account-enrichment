@@ -75,10 +75,21 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 mb-5">
-      <h2 className="text-lg font-semibold text-mews-900 mb-4">{title}</h2>
-      {children}
-    </section>
+    <details className="group rounded-2xl bg-white border border-slate-200 shadow-sm mb-5 overflow-hidden">
+      <summary className="flex items-center justify-between px-6 py-4 cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden hover:bg-slate-50 transition-colors">
+        <h2 className="text-lg font-semibold text-mews-900">{title}</h2>
+        <svg
+          className="h-5 w-5 text-slate-400 shrink-0 transition-transform duration-200 group-open:rotate-180"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </summary>
+      <div className="px-6 pb-6 pt-1">{children}</div>
+    </details>
   );
 }
 
@@ -111,6 +122,133 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
 
   return (
     <div>
+      {/* ── Mews positioning — top priority for sales team ── */}
+      {dossier.mews_positioning && (
+        <Section title="Mews positioning">
+          {dossier.mews_positioning.opening_hook && (
+            <div className="mb-3">
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Opening hook
+              </div>
+              <div className="text-sm text-slate-800">
+                {dossier.mews_positioning.opening_hook}
+              </div>
+            </div>
+          )}
+          {dossier.mews_positioning.top_three_value_props?.length ? (
+            <div className="mb-3">
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Top value props
+              </div>
+              <List items={dossier.mews_positioning.top_three_value_props} />
+            </div>
+          ) : null}
+          {dossier.mews_positioning.discovery_questions?.length ? (
+            <div className="mb-3">
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Discovery questions
+              </div>
+              <List items={dossier.mews_positioning.discovery_questions} />
+            </div>
+          ) : null}
+          {dossier.mews_positioning.recommended_next_step && (
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+                Recommended next step
+              </div>
+              <div className="text-sm text-slate-800">
+                {dossier.mews_positioning.recommended_next_step}
+              </div>
+            </div>
+          )}
+        </Section>
+      )}
+
+      {/* ── Key challenges ── */}
+      {dossier.key_challenges?.length ? (
+        <Section title="Key challenges">
+          <div className="space-y-4">
+            {dossier.key_challenges.map((c, i) => (
+              <div
+                key={i}
+                className="rounded-lg border border-slate-200 p-4 bg-slate-50"
+              >
+                <div className="font-medium text-slate-900">{c.challenge}</div>
+                {c.evidence && (
+                  <div className="mt-1 text-sm text-slate-600">
+                    <span className="font-medium">Evidence: </span>
+                    {c.evidence}
+                  </div>
+                )}
+                {c.mews_angle && (
+                  <div className="mt-1 text-sm text-mews-700">
+                    <span className="font-medium">Mews angle: </span>
+                    {c.mews_angle}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ) : null}
+
+      {/* ── Contacts ── */}
+      {dossier.contacts?.length ? (
+        <Section title="Contacts">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-slate-500 border-b border-slate-200">
+                  <th className="py-2 pr-4 font-medium">Name</th>
+                  <th className="py-2 pr-4 font-medium">Role</th>
+                  <th className="py-2 pr-4 font-medium">Email</th>
+                  <th className="py-2 pr-4 font-medium">LinkedIn</th>
+                  <th className="py-2 pr-4 font-medium">Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dossier.contacts.map((c, i) => (
+                  <tr key={i} className="border-b border-slate-100">
+                    <td className="py-2 pr-4">{c.name ?? "—"}</td>
+                    <td className="py-2 pr-4">{c.role}</td>
+                    <td className="py-2 pr-4">
+                      {c.email ? (
+                        <a
+                          href={`mailto:${c.email}`}
+                          className="text-mews-600 underline"
+                        >
+                          {c.email}
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-2 pr-4">
+                      {c.linkedin ? (
+                        <a
+                          href={c.linkedin}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-mews-600 underline"
+                        >
+                          profile
+                        </a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="py-2 pr-4 text-slate-500">
+                      {c.source ?? "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+      ) : null}
+
+      {/* ── Hotel overview ── */}
       <Section title="Hotel">
         <Row label="Name" value={h.name} />
         <Row
@@ -138,6 +276,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         <Row label="Star rating" value={h.star_rating} />
       </Section>
 
+      {/* ── Property profile ── */}
       <Section title="Property profile">
         <Row label="Rooms" value={p.number_of_rooms} />
         <Row label="Room types" value={p.room_types?.join(", ")} />
@@ -147,6 +286,39 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         <Row label="Opened / renovated" value={p.year_opened_or_renovated} />
       </Section>
 
+      {/* ── Reputation ── */}
+      <Section title="Reputation">
+        <Row label="Google" value={r.google_rating} />
+        <Row label="TripAdvisor" value={r.tripadvisor_rating} />
+        <Row label="Booking.com" value={r.booking_rating} />
+        <Row label="Review volume" value={r.review_volume} />
+        {r.positive_themes?.length ? (
+          <div className="mt-3">
+            <div className="text-xs uppercase tracking-wide text-emerald-600 mb-1">
+              What guests love
+            </div>
+            <List items={r.positive_themes} />
+          </div>
+        ) : null}
+        {r.negative_themes?.length ? (
+          <div className="mt-3">
+            <div className="text-xs uppercase tracking-wide text-red-600 mb-1">
+              Recurring complaints
+            </div>
+            <List items={r.negative_themes} />
+          </div>
+        ) : null}
+        {r.recent_press?.length ? (
+          <div className="mt-3">
+            <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
+              Recent press
+            </div>
+            <List items={r.recent_press} />
+          </div>
+        ) : null}
+      </Section>
+
+      {/* ── Services & amenities ── */}
       <Section title="Services & amenities">
         {s.restaurants?.length ? (
           <div className="mb-3">
@@ -203,119 +375,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         ) : null}
       </Section>
 
-      <Section title="Reputation">
-        <Row label="Google" value={r.google_rating} />
-        <Row label="TripAdvisor" value={r.tripadvisor_rating} />
-        <Row label="Booking.com" value={r.booking_rating} />
-        <Row label="Review volume" value={r.review_volume} />
-        {r.positive_themes?.length ? (
-          <div className="mt-3">
-            <div className="text-xs uppercase tracking-wide text-emerald-600 mb-1">
-              What guests love
-            </div>
-            <List items={r.positive_themes} />
-          </div>
-        ) : null}
-        {r.negative_themes?.length ? (
-          <div className="mt-3">
-            <div className="text-xs uppercase tracking-wide text-red-600 mb-1">
-              Recurring complaints
-            </div>
-            <List items={r.negative_themes} />
-          </div>
-        ) : null}
-        {r.recent_press?.length ? (
-          <div className="mt-3">
-            <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-              Recent press
-            </div>
-            <List items={r.recent_press} />
-          </div>
-        ) : null}
-      </Section>
-
-      {dossier.key_challenges?.length ? (
-        <Section title="Key challenges">
-          <div className="space-y-4">
-            {dossier.key_challenges.map((c, i) => (
-              <div
-                key={i}
-                className="rounded-lg border border-slate-200 p-4 bg-slate-50"
-              >
-                <div className="font-medium text-slate-900">{c.challenge}</div>
-                {c.evidence && (
-                  <div className="mt-1 text-sm text-slate-600">
-                    <span className="font-medium">Evidence: </span>
-                    {c.evidence}
-                  </div>
-                )}
-                {c.mews_angle && (
-                  <div className="mt-1 text-sm text-mews-700">
-                    <span className="font-medium">Mews angle: </span>
-                    {c.mews_angle}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </Section>
-      ) : null}
-
-      {dossier.contacts?.length ? (
-        <Section title="Contacts">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-slate-500 border-b border-slate-200">
-                  <th className="py-2 pr-4 font-medium">Name</th>
-                  <th className="py-2 pr-4 font-medium">Role</th>
-                  <th className="py-2 pr-4 font-medium">Email</th>
-                  <th className="py-2 pr-4 font-medium">LinkedIn</th>
-                  <th className="py-2 pr-4 font-medium">Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dossier.contacts.map((c, i) => (
-                  <tr key={i} className="border-b border-slate-100">
-                    <td className="py-2 pr-4">{c.name ?? "—"}</td>
-                    <td className="py-2 pr-4">{c.role}</td>
-                    <td className="py-2 pr-4">
-                      {c.email ? (
-                        <a
-                          href={`mailto:${c.email}`}
-                          className="text-mews-600 underline"
-                        >
-                          {c.email}
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="py-2 pr-4">
-                      {c.linkedin ? (
-                        <a
-                          href={c.linkedin}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-mews-600 underline"
-                        >
-                          profile
-                        </a>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="py-2 pr-4 text-slate-500">
-                      {c.source ?? "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Section>
-      ) : null}
-
+      {/* ── Tech stack signals ── */}
       {dossier.tech_stack_signals?.length ? (
         <Section title="Tech stack signals">
           <ul className="space-y-2 text-sm">
@@ -334,47 +394,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         </Section>
       ) : null}
 
-      {dossier.mews_positioning && (
-        <Section title="Mews positioning">
-          {dossier.mews_positioning.opening_hook && (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Opening hook
-              </div>
-              <div className="text-sm text-slate-800">
-                {dossier.mews_positioning.opening_hook}
-              </div>
-            </div>
-          )}
-          {dossier.mews_positioning.top_three_value_props?.length ? (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Top value props
-              </div>
-              <List items={dossier.mews_positioning.top_three_value_props} />
-            </div>
-          ) : null}
-          {dossier.mews_positioning.discovery_questions?.length ? (
-            <div className="mb-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Discovery questions
-              </div>
-              <List items={dossier.mews_positioning.discovery_questions} />
-            </div>
-          ) : null}
-          {dossier.mews_positioning.recommended_next_step && (
-            <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-                Recommended next step
-              </div>
-              <div className="text-sm text-slate-800">
-                {dossier.mews_positioning.recommended_next_step}
-              </div>
-            </div>
-          )}
-        </Section>
-      )}
-
+      {/* ── Sources ── */}
       {dossier.sources?.length ? (
         <Section title="Sources">
           <ul className="space-y-1 text-sm">
