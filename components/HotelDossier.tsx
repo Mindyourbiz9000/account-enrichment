@@ -706,15 +706,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
     <div>
       <HeroCard dossier={dossier} />
       <AiDisclaimerBanner />
-      {/* ── Mews qualification — primary deliverable, lead with it ── */}
-      {dossier.mews_qualification &&
-        (dossier.mews_qualification.segment ||
-          dossier.mews_qualification.verdict ||
-          dossier.mews_qualification.fit_signals?.length ||
-          dossier.mews_qualification.red_flags?.length) && (
-          <QualificationSection q={dossier.mews_qualification} />
-        )}
-      {/* ── Mews positioning — top priority for sales team ── */}
+      {/* ── Mews positioning — what to lead with on the call ── */}
       {dossier.mews_positioning && (
         <Section
           title="Mews positioning"
@@ -785,6 +777,14 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
           )}
         </Section>
       )}
+      {/* ── Mews qualification — playbook fit + red flags ── */}
+      {dossier.mews_qualification &&
+        (dossier.mews_qualification.segment ||
+          dossier.mews_qualification.verdict ||
+          dossier.mews_qualification.fit_signals?.length ||
+          dossier.mews_qualification.red_flags?.length) && (
+          <QualificationSection q={dossier.mews_qualification} />
+        )}
 
       {/* ── Mews qualification (segment cheat-sheet match) ── */}
       {dossier.mews_qualification &&
