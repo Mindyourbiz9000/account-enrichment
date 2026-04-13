@@ -52,6 +52,31 @@ Return a single JSON object — and NOTHING ELSE. No prose before or after. No m
 
 ${JSON.stringify(HOTEL_RESEARCH_SCHEMA, null, 2)}`;
 
+// Map the raw Anthropic / transport error into something a salesperson can
+// read. Credit-balance exhaustion, rate limits and overloaded errors all
+// collapse to the same "try again in 5 min, ping Thomas if it persists"
+// message so the UI never leaks an internal 4xx JSON blob.
+const CAPACITY_ERROR_MESSAGE =
+  "Sorry — we've reached the maximum number of requests at the moment. Please try again in 5 minutes. If it still persists, please reach out to Thomas Barvaux on Slack.";
+
+function friendlyApiError(raw: string): string {
+  const s = raw.toLowerCase();
+  if (
+    s.includes("credit balance") ||
+    s.includes("invalid_request_error") ||
+    s.includes("rate_limit") ||
+    s.includes("rate limit") ||
+    s.includes("429") ||
+    s.includes("overloaded") ||
+    s.includes("529") ||
+    s.includes("quota") ||
+    s.includes("billing")
+  ) {
+    return CAPACITY_ERROR_MESSAGE;
+  }
+  return raw;
+}
+
 // Pull the og:image (or twitter:image) from a website's HTML. The model's
 // best guess at a hero_image_url is unreliable, so after research finishes
 // we fetch the hotel's own homepage and look up its social-preview image,
@@ -440,8 +465,9 @@ Return only the JSON object, no prose, no code fences.`;
         });
         finish();
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        send({ type: "error", error: message });
+        const raw = err instanceof Error ? err.message : String(err);
+        const friendly = friendlyApiError(raw);
+        send({ type: "error", error: friendly, raw });
         finish();
       }
     },
