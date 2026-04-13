@@ -66,7 +66,7 @@ Name the specific feature — not "Mews can help". E.g. "Automatic settlement pa
 9. Be concise. The JSON should be rich but every field should earn its place — no filler.
 
 OUTPUT FORMAT (critical):
-Return a single JSON object — and NOTHING ELSE. No prose before or after. No markdown code fences. The object MUST conform to this JSON schema:
+Return a single JSON object — and NOTHING ELSE. No prose before or after. No markdown code fences. Never wrap quoted spans in <cite> tags or any other XML-style markup inside JSON string values — write plain text only and put the source URL in the dedicated source_url / evidence_url fields. The object MUST conform to this JSON schema:
 
 ${JSON.stringify(HOTEL_RESEARCH_SCHEMA, null, 2)}`;
 
@@ -233,13 +233,24 @@ async function fetchOgImage(pageUrl: string): Promise<string | null> {
   }
 }
 
+/** The web_search tool sometimes wraps grounded quotes in
+ *  <cite index="...">...</cite> markup that leaks into the JSON string
+ *  values. Strip the tags everywhere in the raw output so the dossier
+ *  reads cleanly. */
+function stripCitationTags(text: string): string {
+  return text
+    .replace(/<\/?cite\b[^>]*>/gi, "")
+    .replace(/<\/?antml:cite\b[^>]*>/gi, "");
+}
+
 function extractJson(text: string): unknown {
+  const cleaned = stripCitationTags(text);
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch {
     // continue
   }
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const fenced = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenced) {
     try {
       return JSON.parse(fenced[1]);
@@ -247,11 +258,11 @@ function extractJson(text: string): unknown {
       // continue
     }
   }
-  const first = text.indexOf("{");
-  const last = text.lastIndexOf("}");
+  const first = cleaned.indexOf("{");
+  const last = cleaned.lastIndexOf("}");
   if (first !== -1 && last > first) {
     try {
-      return JSON.parse(text.slice(first, last + 1));
+      return JSON.parse(cleaned.slice(first, last + 1));
     } catch {
       // continue
     }
@@ -360,7 +371,10 @@ Return only the JSON object, no prose, no code fences.`;
           // prompt and a capped number of web searches this keeps the
           // per-run cost in the single-digit-cents range.
           model: "claude-haiku-4-5",
-          max_tokens: 6000,
+          // 8000 leaves headroom for the schema's optional URL fields
+          // (evidence_url / source_url) which can add ~1-2KB of text on
+          // a busy dossier with 10+ negative themes and key challenges.
+          max_tokens: 8000,
           system: [
             {
               type: "text",
