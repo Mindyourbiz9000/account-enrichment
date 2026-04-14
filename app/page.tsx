@@ -23,6 +23,12 @@ type StreamEvent =
     }
   | { type: "error"; error: string; raw?: string };
 
+// Feature flag: hide the Claude deep-search button and make Perplexity the
+// default. Flip back to `true` to re-enable the Claude path — all of its
+// plumbing (onSubmit("claude"), /api/research route, log rendering) is
+// intentionally kept intact.
+const SHOW_CLAUDE_BUTTON = false;
+
 const LEVEL_META: Record<
   LogEntry["level"],
   { label: string; className: string }
@@ -262,7 +268,19 @@ export default function Home() {
       <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
-          <form onSubmit={(e) => e.preventDefault()} className="grid gap-4 flex-1">
+          <form
+            onSubmit={(e) => {
+              // Pressing Enter in any input kicks off a Perplexity search —
+              // Perplexity is the default provider. The Claude button (when
+              // re-enabled) still has to be clicked explicitly.
+              if (loading) {
+                e.preventDefault();
+                return;
+              }
+              onSubmit(e, "perplexity");
+            }}
+            className="grid gap-4 flex-1"
+          >
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Hotel name
@@ -301,17 +319,23 @@ export default function Home() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-auto">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={(e) => onSubmit(e, "claude")}
-                className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
-              >
-                {loading && provider === "claude"
-                  ? "Researching…"
-                  : "Run Deep Search (Claude)"}
-              </button>
+            <div
+              className={`grid ${
+                SHOW_CLAUDE_BUTTON ? "grid-cols-2" : "grid-cols-1"
+              } gap-3 mt-auto`}
+            >
+              {SHOW_CLAUDE_BUTTON && (
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={(e) => onSubmit(e, "claude")}
+                  className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
+                >
+                  {loading && provider === "claude"
+                    ? "Researching…"
+                    : "Run Deep Search (Claude)"}
+                </button>
+              )}
               <button
                 type="button"
                 disabled={loading}
@@ -320,7 +344,9 @@ export default function Home() {
               >
                 {loading && provider === "perplexity"
                   ? "Researching…"
-                  : "Run Deep Search (Perplexity)"}
+                  : SHOW_CLAUDE_BUTTON
+                    ? "Run Deep Search (Perplexity)"
+                    : "Run Deep Search"}
               </button>
             </div>
           </form>

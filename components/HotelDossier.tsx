@@ -206,6 +206,13 @@ export type HotelDossier = {
     mews_angle?: string;
     payment_related?: boolean;
     quotes?: GuestQuote[];
+    evidence_type?:
+      | "guest_reviews"
+      | "segment_profile"
+      | "tech_stack"
+      | "services_gap"
+      | "press_or_ownership";
+    evidence_basis?: string;
   }>;
   contacts?: Array<{
     name?: string;
@@ -352,6 +359,19 @@ function PressList({
     </ul>
   );
 }
+
+// Human-readable labels for non-review challenge evidence types. The dossier
+// emits an enum (`segment_profile`, `tech_stack`, `services_gap`,
+// `press_or_ownership`, `guest_reviews`); the UI renders a short title next
+// to the evidence_basis text so the salesperson sees at a glance why the
+// challenge is listed.
+const EVIDENCE_TYPE_LABEL: Record<string, string> = {
+  guest_reviews: "From guest reviews",
+  segment_profile: "Segment-driven",
+  tech_stack: "Tech-stack signal",
+  services_gap: "Services gap",
+  press_or_ownership: "Press / ownership",
+};
 
 // Keyword fallback — Claude should set payment_related=true itself, but if it
 // forgets we still catch the obvious cases so payments always get highlighted.
@@ -878,6 +898,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                 c.payment_related === true ||
                 mentionsPayments(c.challenge) ||
                 mentionsPayments(c.evidence) ||
+                mentionsPayments(c.evidence_basis) ||
                 mentionsPayments(c.mews_angle) ||
                 (c.quotes ?? []).some((q) => mentionsPayments(q.text));
               const headerClass = isPayment
@@ -905,15 +926,17 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                     {/* Legacy dossiers (pre-quotes schema) carried a free-form
                         "evidence" string; render it if present so old dossiers
                         still display something. New dossiers populate `quotes`
-                        and skip this. */}
-                    {!c.quotes?.length && c.evidence && (
-                      <div className="text-sm text-slate-700">
-                        <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
-                          Evidence
-                        </span>
-                        {c.evidence}
-                      </div>
-                    )}
+                        or `evidence_basis` and skip this. */}
+                    {!c.quotes?.length &&
+                      !c.evidence_basis &&
+                      c.evidence && (
+                        <div className="text-sm text-slate-700">
+                          <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
+                            Evidence
+                          </span>
+                          {c.evidence}
+                        </div>
+                      )}
                     {c.quotes && c.quotes.length > 0 && (
                       <div>
                         <SupportingQuotes
@@ -922,6 +945,20 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                             isPayment ? "text-mews-700" : "text-amber-700"
                           }
                         />
+                      </div>
+                    )}
+                    {/* Non-review-backed challenges (segment/tech/services/press)
+                        surface their reasoning via evidence_basis + a type
+                        label so the salesperson can see WHY this is a real
+                        challenge even without a guest quote. */}
+                    {c.evidence_basis && (
+                      <div className="text-sm text-slate-700 bg-slate-50 border border-slate-200 rounded p-2">
+                        <span className="font-semibold text-slate-500 text-[10px] uppercase tracking-wide block mb-0.5">
+                          {c.evidence_type
+                            ? EVIDENCE_TYPE_LABEL[c.evidence_type] ?? "Basis"
+                            : "Basis"}
+                        </span>
+                        {c.evidence_basis}
                       </div>
                     )}
                     {c.mews_angle && (

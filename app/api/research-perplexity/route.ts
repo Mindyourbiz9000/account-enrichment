@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/researchPrompt";
+import { HOTEL_RESEARCH_SCHEMA } from "@/lib/schema";
 
 // Deep research runs can take a while — allow up to 5 minutes on Vercel.
 export const maxDuration = 300;
@@ -161,7 +162,13 @@ Hotel: ${hotelName}
 City: ${city}
 Country: ${country}
 
-Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Mews positioning. Include source URLs.
+Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes filled to their caps where evidence supports it), key challenges tied to review evidence, tech-stack signals, and a tailored Mews positioning. Ground \`mews_qualification\` and \`mews_positioning\` in the Mews playbook primer from the system prompt — quote segment fit-signals and red-flags verbatim from the cheat-sheet. Include source URLs (aim for 10+).
+
+CONTACTS ARE MANDATORY: the \`contacts\` array must never be empty. Find the General Manager's name at minimum (LinkedIn, hotel "Team"/"About" page, press releases). If you truly cannot find a named person, emit a fallback contact with the hotel's \`reservations@\` / \`sales@\` / \`info@\` email + reception phone and \`role: "Reservations Team"\` — scraped from the hotel's own contact page.
+
+KEY CHALLENGES ARE A PREMIUM DELIVERABLE: aim for 4-6 \`key_challenges\` per hotel, mixing \`guest_reviews\` (≥2 quotes each) with \`segment_profile\` / \`tech_stack\` / \`services_gap\` / \`press_or_ownership\` (each with an \`evidence_basis\`). Every hotel has structural challenges tied to its segment and tech — don't limit yourself to what guests have publicly complained about. Every challenge needs a specific \`mews_angle\` naming a Mews product, and \`payment_related: true\` whenever money movement is implicated.
+
+Spend your full 8-search budget. Run the mandatory depth & completeness self-review checklist before returning.
 
 Return only the JSON object, no prose, no code fences.`;
 
@@ -179,6 +186,21 @@ Return only the JSON object, no prose, no code fences.`;
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: userPrompt },
               ],
+              // Enforce the dossier shape server-side so we no longer need
+              // to stringify the schema into the prompt (saves ~4-5k input
+              // tokens per call) and reduces JSON-parse failures.
+              response_format: {
+                type: "json_schema",
+                json_schema: { schema: HOTEL_RESEARCH_SCHEMA },
+              },
+              // Keep "high" search context — this dossier relies on deep web
+              // evidence (recent reviews, named contacts, tech-stack hints).
+              // "medium" made outputs visibly lighter in testing.
+              web_search_options: { search_context_size: "high" },
+              // Give the model enough room for a full rich JSON dossier.
+              // Under structured output, Perplexity's implicit cap can
+              // quietly truncate — an explicit ceiling prevents that.
+              max_tokens: 8000,
             }),
           },
         );
@@ -219,17 +241,26 @@ Return only the JSON object, no prose, no code fences.`;
         // "Still working…" while we wait.
         const data = (await perplexityRes.json()) as {
           choices?: { message?: { content?: string }; finish_reason?: string }[];
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            // Perplexity returns cached prefix tokens when auto-caching
+            // hits. Naming varies across provider versions — accept both.
+            prompt_tokens_cached?: number;
+            cached_tokens?: number;
+          };
         };
 
         const fullContent = data.choices?.[0]?.message?.content ?? "";
         const inputTokens = data.usage?.prompt_tokens ?? 0;
         const outputTokens = data.usage?.completion_tokens ?? 0;
+        const cachedTokens =
+          data.usage?.prompt_tokens_cached ?? data.usage?.cached_tokens ?? 0;
 
         send({
           type: "log",
           level: "done",
-          message: "Perplexity finished — parsing JSON…",
+          message: `Perplexity finished — parsing JSON… (in=${inputTokens}, cached=${cachedTokens}, out=${outputTokens})`,
           t: elapsed(),
         });
 
@@ -288,7 +319,11 @@ Return only the JSON object, no prose, no code fences.`;
           dossier,
           usage:
             inputTokens || outputTokens
-              ? { input_tokens: inputTokens, output_tokens: outputTokens }
+              ? {
+                  input_tokens: inputTokens,
+                  output_tokens: outputTokens,
+                  cached_tokens: cachedTokens,
+                }
               : undefined,
           elapsed: elapsed(),
         });
