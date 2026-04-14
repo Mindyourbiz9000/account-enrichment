@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { HotelDossierView, HotelDossier } from "@/components/HotelDossier";
 
 type LogEntry = {
@@ -205,7 +206,7 @@ export default function Home() {
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
       {/* ── Header ── */}
-      <header className="mb-10 no-print">
+      <header className="mb-10 no-print flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-mews-600 flex items-center justify-center text-black font-bold text-lg">
             M
@@ -220,6 +221,25 @@ export default function Home() {
             </p>
           </div>
         </div>
+        <Link
+          href="/bulk"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition"
+        >
+          <svg
+            className="h-4 w-4 text-mews-700"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M4 6h16M4 12h16M4 18h10"
+            />
+          </svg>
+          Bulk qualify from CSV
+        </Link>
       </header>
 
       {/* ── Top panel: form (left) + live log (right) ──
