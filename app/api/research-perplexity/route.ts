@@ -187,10 +187,10 @@ Return only the JSON object, no prose, no code fences.`;
                 type: "json_schema",
                 json_schema: { schema: HOTEL_RESEARCH_SCHEMA },
               },
-              // Use "medium" search context — "low" risks thin evidence for
-              // named contacts / review URLs, "high" burns tokens we don't
-              // need given the prompt already instructs targeted searches.
-              web_search_options: { search_context_size: "medium" },
+              // Keep "high" search context — this dossier relies on deep web
+              // evidence (recent reviews, named contacts, tech-stack hints).
+              // "medium" made outputs visibly lighter in testing.
+              web_search_options: { search_context_size: "high" },
             }),
           },
         );
