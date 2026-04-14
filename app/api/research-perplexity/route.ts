@@ -166,6 +166,8 @@ Cover everything the schema asks for: website, property profile, services (F&B, 
 
 CONTACTS ARE MANDATORY: the \`contacts\` array must never be empty. Find the General Manager's name at minimum (LinkedIn, hotel "Team"/"About" page, press releases). If you truly cannot find a named person, emit a fallback contact with the hotel's \`reservations@\` / \`sales@\` / \`info@\` email + reception phone and \`role: "Reservations Team"\` — scraped from the hotel's own contact page.
 
+KEY CHALLENGES ARE A PREMIUM DELIVERABLE: aim for 4-6 \`key_challenges\` per hotel, mixing \`guest_reviews\` (≥2 quotes each) with \`segment_profile\` / \`tech_stack\` / \`services_gap\` / \`press_or_ownership\` (each with an \`evidence_basis\`). Every hotel has structural challenges tied to its segment and tech — don't limit yourself to what guests have publicly complained about. Every challenge needs a specific \`mews_angle\` naming a Mews product, and \`payment_related: true\` whenever money movement is implicated.
+
 Spend your full 8-search budget. Run the mandatory depth & completeness self-review checklist before returning.
 
 Return only the JSON object, no prose, no code fences.`;

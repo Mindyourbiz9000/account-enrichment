@@ -195,29 +195,47 @@ export const HOTEL_RESEARCH_SCHEMA = {
     },
     key_challenges: {
       type: "array",
-      maxItems: 5,
+      maxItems: 6,
       description:
-        "Top operational or commercial challenges this hotel likely faces — at most 5, picked for their relevance to a Mews sales pitch. Only include a challenge if you can back it with at least TWO verbatim guest quotes from separate reviews (or, exceptionally, one quote PLUS a published source). One-off complaints do not belong here.",
+        "Top operational or commercial challenges this hotel likely faces — at most 6, picked for their relevance to a Mews sales pitch. Mix evidence types: (a) REVIEW-BACKED challenges (≥2 verbatim guest quotes from separate reviews, emit the 2 quotes), (b) SEGMENT / TECH / SERVICES-GAP / PRESS-driven challenges (no quote required — emit `evidence_basis` instead). One-off review gripes do not belong here; structural challenges grounded in the segment playbook DO belong even without quotes.",
       items: {
         type: "object",
         properties: {
           challenge: {
             type: "string",
-            description: "Short summary of the recurring challenge.",
+            description: "Short summary of the challenge.",
           },
           mews_angle: {
             type: "string",
-            description: "How Mews could address this specifically",
+            description:
+              "How Mews could address this specifically — name the Mews product line.",
           },
           payment_related: {
             type: "boolean",
             description:
               "True if the challenge touches payments, billing, deposits, refunds, chargebacks, invoicing, reconciliation, tipping, POS charging, split folios, cash handling, card-on-file storage, currency conversion, or any other money-movement pain point. Err on the side of flagging true when payments are even partially implicated — this unlocks a highly differentiated Mews Payments pitch.",
           },
+          evidence_type: {
+            type: "string",
+            enum: [
+              "guest_reviews",
+              "segment_profile",
+              "tech_stack",
+              "services_gap",
+              "press_or_ownership",
+            ],
+            description:
+              "Where the challenge comes from. 'guest_reviews' when ≥2 quotes exist. 'segment_profile' when driven by the playbook's segment-specific pains (aparthotel recurring billing, resort package mapping, MMP central governance, etc.). 'tech_stack' when driven by an observed PMS/POS/CM. 'services_gap' when an ICP-expected service is missing. 'press_or_ownership' when a recent news event implies the challenge.",
+          },
+          evidence_basis: {
+            type: "string",
+            description:
+              "REQUIRED when evidence_type is not 'guest_reviews'. One concise sentence explaining why this is a real challenge for THIS hotel — reference the specific segment rule, tech system, services gap, or press event. Example: 'Aparthotel with 60-night average stay per Booking.com — recurring monthly billing & deposit lifecycle is a playbook-flagged pain.'",
+          },
           quotes: {
             type: "array",
             description:
-              "EXACTLY 2 verbatim, word-for-word guest quotes (or press snippets) that back this challenge. Pick the two punchiest. Never paraphrase. Trim each to ≤20 words.",
+              "REQUIRED when evidence_type is 'guest_reviews'. Otherwise omit or leave empty. EXACTLY 2 verbatim, word-for-word guest quotes (or press snippets) that back this challenge. Pick the two punchiest. Never paraphrase. Trim each to ≤20 words.",
             items: {
               type: "object",
               properties: {
@@ -246,7 +264,7 @@ export const HOTEL_RESEARCH_SCHEMA = {
             },
           },
         },
-        required: ["challenge", "quotes"],
+        required: ["challenge"],
         additionalProperties: false,
       },
     },
