@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/researchPrompt";
+import { HOTEL_RESEARCH_SCHEMA } from "@/lib/schema";
 
 // Deep research runs can take a while — allow up to 5 minutes on Vercel.
 export const maxDuration = 300;
@@ -179,6 +180,17 @@ Return only the JSON object, no prose, no code fences.`;
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: userPrompt },
               ],
+              // Enforce the dossier shape server-side so we no longer need
+              // to stringify the schema into the prompt (saves ~4-5k input
+              // tokens per call) and reduces JSON-parse failures.
+              response_format: {
+                type: "json_schema",
+                json_schema: { schema: HOTEL_RESEARCH_SCHEMA },
+              },
+              // Use "medium" search context — "low" risks thin evidence for
+              // named contacts / review URLs, "high" burns tokens we don't
+              // need given the prompt already instructs targeted searches.
+              web_search_options: { search_context_size: "medium" },
             }),
           },
         );
@@ -219,17 +231,26 @@ Return only the JSON object, no prose, no code fences.`;
         // "Still working…" while we wait.
         const data = (await perplexityRes.json()) as {
           choices?: { message?: { content?: string }; finish_reason?: string }[];
-          usage?: { prompt_tokens?: number; completion_tokens?: number };
+          usage?: {
+            prompt_tokens?: number;
+            completion_tokens?: number;
+            // Perplexity returns cached prefix tokens when auto-caching
+            // hits. Naming varies across provider versions — accept both.
+            prompt_tokens_cached?: number;
+            cached_tokens?: number;
+          };
         };
 
         const fullContent = data.choices?.[0]?.message?.content ?? "";
         const inputTokens = data.usage?.prompt_tokens ?? 0;
         const outputTokens = data.usage?.completion_tokens ?? 0;
+        const cachedTokens =
+          data.usage?.prompt_tokens_cached ?? data.usage?.cached_tokens ?? 0;
 
         send({
           type: "log",
           level: "done",
-          message: "Perplexity finished — parsing JSON…",
+          message: `Perplexity finished — parsing JSON… (in=${inputTokens}, cached=${cachedTokens}, out=${outputTokens})`,
           t: elapsed(),
         });
 
@@ -288,7 +309,11 @@ Return only the JSON object, no prose, no code fences.`;
           dossier,
           usage:
             inputTokens || outputTokens
-              ? { input_tokens: inputTokens, output_tokens: outputTokens }
+              ? {
+                  input_tokens: inputTokens,
+                  output_tokens: outputTokens,
+                  cached_tokens: cachedTokens,
+                }
               : undefined,
           elapsed: elapsed(),
         });
