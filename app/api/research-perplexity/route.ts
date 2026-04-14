@@ -162,7 +162,9 @@ Hotel: ${hotelName}
 City: ${city}
 Country: ${country}
 
-Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes filled to their caps where evidence supports it), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Mews positioning. Ground \`mews_qualification\` and \`mews_positioning\` in the Mews playbook primer from the system prompt — quote segment fit-signals and red-flags verbatim from the cheat-sheet. Include source URLs (aim for 10+).
+Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes filled to their caps where evidence supports it), key challenges tied to review evidence, tech-stack signals, and a tailored Mews positioning. Ground \`mews_qualification\` and \`mews_positioning\` in the Mews playbook primer from the system prompt — quote segment fit-signals and red-flags verbatim from the cheat-sheet. Include source URLs (aim for 10+).
+
+CONTACTS ARE MANDATORY: the \`contacts\` array must never be empty. Find the General Manager's name at minimum (LinkedIn, hotel "Team"/"About" page, press releases). If you truly cannot find a named person, emit a fallback contact with the hotel's \`reservations@\` / \`sales@\` / \`info@\` email + reception phone and \`role: "Reservations Team"\` — scraped from the hotel's own contact page.
 
 Spend your full 8-search budget. Run the mandatory depth & completeness self-review checklist before returning.
 
