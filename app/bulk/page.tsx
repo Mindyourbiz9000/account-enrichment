@@ -127,6 +127,89 @@ function autoDetectMapping(headers: string[]): Mapping {
   return { name, city, country };
 }
 
+type FilterKey = "green" | "amber" | "red" | "discovery" | "error" | "pending";
+
+const ALL_FILTERS: FilterKey[] = [
+  "green",
+  "amber",
+  "red",
+  "discovery",
+  "error",
+  "pending",
+];
+
+// Bucket a row into one of the filter / colour groups so the filter
+// pills, summary counts, and CSV export all agree.
+function bucketOf(r: Row): FilterKey {
+  if (r.status === "error") return "error";
+  if (r.status !== "done") return "pending";
+  if (r.verdict === "🟩 strong fit") return "green";
+  if (r.verdict === "🟨 limited fit") return "amber";
+  if (r.verdict === "🟥 poor fit") return "red";
+  return "discovery";
+}
+
+// Strip the leading emoji from the model's verdict so the export is
+// readable in tools that don't render emoji (older Excel, plain text).
+function verdictPlain(verdict?: string): string {
+  if (!verdict) return "";
+  return verdict.replace(/^\p{Extended_Pictographic}+\s*/u, "").trim();
+}
+
+const FIT_LABEL: Record<FilterKey, string> = {
+  green: "Strong fit",
+  amber: "Limited fit",
+  red: "Poor fit",
+  discovery: "Needs more discovery",
+  error: "Error",
+  pending: "Pending",
+};
+
+const FIT_COLOR_LABEL: Record<FilterKey, string> = {
+  green: "Green",
+  amber: "Amber",
+  red: "Red",
+  discovery: "Grey",
+  error: "—",
+  pending: "—",
+};
+
+const FILTER_PALETTE: Record<
+  FilterKey,
+  { dot: string; activeBg: string; countText: string }
+> = {
+  green: {
+    dot: "bg-emerald-500",
+    activeBg: "bg-emerald-50 border-emerald-200 text-emerald-800",
+    countText: "text-emerald-600",
+  },
+  amber: {
+    dot: "bg-amber-500",
+    activeBg: "bg-amber-50 border-amber-200 text-amber-800",
+    countText: "text-amber-600",
+  },
+  red: {
+    dot: "bg-red-500",
+    activeBg: "bg-red-50 border-red-200 text-red-800",
+    countText: "text-red-600",
+  },
+  discovery: {
+    dot: "bg-slate-400",
+    activeBg: "bg-slate-50 border-slate-200 text-slate-700",
+    countText: "text-slate-500",
+  },
+  error: {
+    dot: "bg-red-500",
+    activeBg: "bg-white border-red-300 text-red-700",
+    countText: "text-red-600",
+  },
+  pending: {
+    dot: "bg-slate-300",
+    activeBg: "bg-white border-slate-300 text-slate-600",
+    countText: "text-slate-500",
+  },
+};
+
 const VERDICT_STYLE: Record<
   string,
   { dot: string; pill: string; rowBg: string }
@@ -219,6 +302,11 @@ export default function BulkPage() {
     city: -1,
     country: -1,
   });
+  // Verdict filters — clicking a chip toggles its bucket. The displayed
+  // table AND the CSV export both honour this set.
+  const [activeFilters, setActiveFilters] = useState<Set<FilterKey>>(
+    () => new Set(ALL_FILTERS),
+  );
   const abortRef = useRef<AbortController | null>(null);
 
   const updateRow = useCallback((id: number, patch: Partial<Row>) => {
@@ -321,48 +409,101 @@ export default function BulkPage() {
     abortRef.current?.abort();
   }, []);
 
+  // Per-bucket counts for the filter pills + summary line.
+  const counts = useMemo(() => {
+    const c: Record<FilterKey, number> = {
+      green: 0,
+      amber: 0,
+      red: 0,
+      discovery: 0,
+      error: 0,
+      pending: 0,
+    };
+    for (const r of rows) c[bucketOf(r)]++;
+    return c;
+  }, [rows]);
+
+  // Rows actually shown in the table — also what gets exported.
+  const filteredRows = useMemo(
+    () => rows.filter((r) => activeFilters.has(bucketOf(r))),
+    [rows, activeFilters],
+  );
+
+  const doneCount = rows.filter(
+    (r) => r.status === "done" || r.status === "error",
+  ).length;
+
+  const filtersActive = activeFilters.size < ALL_FILTERS.length;
+
+  const toggleFilter = useCallback((key: FilterKey) => {
+    setActiveFilters((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      // Never let the user lock themselves into an empty view — clicking
+      // off the last active chip resets to "show all" instead.
+      if (next.size === 0) return new Set(ALL_FILTERS);
+      return next;
+    });
+  }, []);
+
+  const onlyFilter = useCallback((key: FilterKey) => {
+    setActiveFilters(new Set([key]));
+  }, []);
+
+  const resetFilters = useCallback(() => {
+    setActiveFilters(new Set(ALL_FILTERS));
+  }, []);
+
   const onDownloadResults = useCallback(() => {
-    const header = ["Hotel", "City", "Country", "Verdict", "Segment", "Rationale"];
-    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
-    const lines = [header.join(",")];
-    for (const r of rows) {
+    const header = [
+      "Hotel",
+      "City",
+      "Country",
+      "Fit",
+      "Color",
+      "Verdict",
+      "Segment",
+      "Rationale",
+      "Error",
+    ];
+    // RFC-4180-ish: wrap every field in quotes, escape inner quotes, use
+    // CRLF line endings (Excel-friendly).
+    const esc = (v: string) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const lines = [header.map(esc).join(",")];
+    for (const r of filteredRows) {
+      const bucket = bucketOf(r);
       lines.push(
         [
           r.hotelName,
           r.city,
           r.country,
-          r.verdict ?? (r.error ? `ERROR: ${r.error}` : ""),
+          FIT_LABEL[bucket],
+          FIT_COLOR_LABEL[bucket],
+          verdictPlain(r.verdict),
           r.segment ?? "",
           r.rationale ?? "",
+          r.error ?? "",
         ]
-          .map((v) => esc(String(v)))
+          .map(esc)
           .join(","),
       );
     }
-    const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+    // \ufeff (BOM) makes Excel detect UTF-8; without it the emoji-free
+    // text is fine but accented characters can still be mangled.
+    const csv = "\ufeff" + lines.join("\r\n") + "\r\n";
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `mews-bulk-qualification-${Date.now()}.csv`;
+    const filterTag = filtersActive
+      ? "-" +
+        ALL_FILTERS.filter((k) => activeFilters.has(k)).join("+")
+      : "";
+    a.download = `mews-bulk-qualification${filterTag}-${Date.now()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [rows]);
-
-  const summary = useMemo(() => {
-    const s = { green: 0, amber: 0, red: 0, unknown: 0, error: 0, pending: 0 };
-    for (const r of rows) {
-      if (r.status === "error") s.error++;
-      else if (r.status !== "done") s.pending++;
-      else if (r.verdict === "🟩 strong fit") s.green++;
-      else if (r.verdict === "🟨 limited fit") s.amber++;
-      else if (r.verdict === "🟥 poor fit") s.red++;
-      else s.unknown++;
-    }
-    return s;
-  }, [rows]);
-
-  const doneCount = rows.filter((r) => r.status === "done" || r.status === "error")
-    .length;
+  }, [filteredRows, filtersActive, activeFilters]);
 
   return (
     <main className="mx-auto max-w-7xl px-6 py-12">
@@ -450,9 +591,33 @@ export default function BulkPage() {
           {doneCount > 0 && !running && (
             <button
               onClick={onDownloadResults}
-              className="rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-medium px-4 py-2 text-sm transition"
+              disabled={filteredRows.length === 0}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 font-medium px-4 py-2 text-sm transition"
+              title={
+                filtersActive
+                  ? `Export the ${filteredRows.length} filtered row${filteredRows.length === 1 ? "" : "s"}`
+                  : `Export all ${filteredRows.length} rows`
+              }
             >
-              Download results CSV
+              <svg
+                className="h-4 w-4 text-slate-500"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                />
+              </svg>
+              Export CSV ({filteredRows.length})
+              {filtersActive && (
+                <span className="rounded-full bg-mews-100 text-mews-800 text-[10px] font-semibold px-1.5 py-0.5 uppercase">
+                  filtered
+                </span>
+              )}
             </button>
           )}
         </div>
@@ -595,46 +760,109 @@ export default function BulkPage() {
         )}
       </section>
 
-      {/* Progress + summary */}
+      {/* Progress + filter chips */}
       {rows.length > 0 && (
-        <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
-          <div className="text-slate-600">
-            <span className="font-semibold text-slate-900">{doneCount}</span>
-            <span className="text-slate-500"> / {rows.length} processed</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              {summary.green} green
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-800">
-              <span className="h-2 w-2 rounded-full bg-amber-500" />
-              {summary.amber} amber
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-xs text-red-800">
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              {summary.red} red
-            </span>
-            {summary.unknown > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">
-                <span className="h-2 w-2 rounded-full bg-slate-400" />
-                {summary.unknown} needs discovery
+        <div className="mb-4 rounded-2xl bg-white border border-slate-200 shadow-sm p-4">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            <div className="text-sm">
+              <span className="font-semibold text-slate-900 text-base">
+                {doneCount}
+              </span>
+              <span className="text-slate-500"> / {rows.length} processed</span>
+              {filtersActive && (
+                <span className="ml-3 text-xs text-slate-500">
+                  Showing{" "}
+                  <span className="font-semibold text-slate-700">
+                    {filteredRows.length}
+                  </span>{" "}
+                  filtered
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  { key: "green", label: "Strong fit" },
+                  { key: "amber", label: "Limited fit" },
+                  { key: "red", label: "Poor fit" },
+                  { key: "discovery", label: "Needs discovery" },
+                  { key: "error", label: "Errors" },
+                  { key: "pending", label: "Pending" },
+                ] as { key: FilterKey; label: string }[]
+              ).map(({ key, label }) => {
+                const count = counts[key];
+                if (count === 0) return null;
+                const active = activeFilters.has(key);
+                const palette = FILTER_PALETTE[key];
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => toggleFilter(key)}
+                    onDoubleClick={() => onlyFilter(key)}
+                    title={
+                      active
+                        ? `Click to hide. Double-click to show only ${label.toLowerCase()}.`
+                        : `Click to show ${label.toLowerCase()}.`
+                    }
+                    className={`group inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition ${
+                      active
+                        ? palette.activeBg
+                        : "bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600"
+                    }`}
+                  >
+                    <span
+                      className={`h-2 w-2 rounded-full ${
+                        active ? palette.dot : "bg-slate-300"
+                      }`}
+                    />
+                    {label}
+                    <span
+                      className={`tabular-nums ${
+                        active ? palette.countText : "text-slate-400"
+                      }`}
+                    >
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filtersActive && (
+              <button
+                type="button"
+                onClick={resetFilters}
+                className="text-xs text-mews-700 underline decoration-dotted hover:text-mews-900"
+              >
+                Reset filters
+              </button>
+            )}
+
+            <div className="flex-1" />
+
+            {running && (
+              <span className="flex items-center gap-2 text-xs text-slate-500">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-mews-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-mews-600" />
+                </span>
+                Running — up to 3 in parallel
               </span>
             )}
-            {summary.error > 0 && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-2 py-0.5 text-xs text-red-700">
-                {summary.error} error{summary.error === 1 ? "" : "s"}
-              </span>
-            )}
           </div>
-          {running && (
-            <span className="flex items-center gap-2 text-xs text-slate-500">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-mews-500 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-mews-600" />
-              </span>
-              Running — up to 3 in parallel
-            </span>
+
+          {/* Subtle progress bar — fills as rows complete. */}
+          {rows.length > 0 && (
+            <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full bg-mews-600 transition-all duration-300"
+                style={{
+                  width: `${(doneCount / rows.length) * 100}%`,
+                }}
+              />
+            </div>
           )}
         </div>
       )}
@@ -644,19 +872,21 @@ export default function BulkPage() {
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
+              <thead className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur text-left text-[11px] uppercase tracking-wider text-slate-500 border-b border-slate-200">
                 <tr>
-                  <th className="px-4 py-3 font-medium">#</th>
-                  <th className="px-4 py-3 font-medium">Hotel</th>
-                  <th className="px-4 py-3 font-medium">City</th>
-                  <th className="px-4 py-3 font-medium">Country</th>
-                  <th className="px-4 py-3 font-medium">Verdict</th>
-                  <th className="px-4 py-3 font-medium">Segment</th>
-                  <th className="px-4 py-3 font-medium">Rationale</th>
+                  <th className="px-4 py-3 font-semibold w-10">#</th>
+                  <th className="px-4 py-3 font-semibold">Hotel</th>
+                  <th className="px-4 py-3 font-semibold">City</th>
+                  <th className="px-4 py-3 font-semibold">Country</th>
+                  <th className="px-4 py-3 font-semibold">Verdict</th>
+                  <th className="px-4 py-3 font-semibold">Segment</th>
+                  <th className="px-4 py-3 font-semibold">Rationale</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, idx) => {
+                {filteredRows.map((r, idx) => {
+                  const bucket = bucketOf(r);
+                  const palette = FILTER_PALETTE[bucket];
                   const style =
                     r.verdict && VERDICT_STYLE[r.verdict as string]
                       ? VERDICT_STYLE[r.verdict as string]
@@ -664,11 +894,15 @@ export default function BulkPage() {
                   return (
                     <tr
                       key={r.id}
-                      className={`border-t border-slate-100 align-top ${
+                      className={`border-t border-slate-100 align-top hover:bg-slate-50/60 transition-colors ${
                         style?.rowBg ?? ""
                       }`}
                     >
                       <td className="px-4 py-3 text-slate-400 tabular-nums">
+                        {/* Left accent stripe matching the row's bucket. */}
+                        <span
+                          className={`mr-2 inline-block h-4 w-1 rounded-sm align-middle ${palette.dot}`}
+                        />
                         {idx + 1}
                       </td>
                       <td className="px-4 py-3 font-medium text-slate-900">
@@ -678,10 +912,13 @@ export default function BulkPage() {
                       <td className="px-4 py-3 text-slate-700">{r.country}</td>
                       <td className="px-4 py-3">
                         {r.status === "pending" && (
-                          <span className="text-slate-400 italic">queued</span>
+                          <span className="inline-flex items-center gap-1.5 text-slate-400 text-xs">
+                            <span className="h-2 w-2 rounded-full bg-slate-300" />
+                            queued
+                          </span>
                         )}
                         {r.status === "running" && (
-                          <span className="inline-flex items-center gap-1.5 text-slate-500">
+                          <span className="inline-flex items-center gap-1.5 text-slate-500 text-xs">
                             <span className="relative flex h-2 w-2">
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-mews-500 opacity-75" />
                               <span className="relative inline-flex rounded-full h-2 w-2 bg-mews-600" />
@@ -691,7 +928,7 @@ export default function BulkPage() {
                         )}
                         {r.status === "done" && r.verdict && (
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap ${
                               style?.pill ??
                               "bg-slate-100 text-slate-700 border-slate-200"
                             }`}
@@ -701,35 +938,55 @@ export default function BulkPage() {
                                 style?.dot ?? "bg-slate-400"
                               }`}
                             />
-                            {r.verdict}
+                            {verdictPlain(r.verdict) || r.verdict}
                           </span>
                         )}
                         {r.status === "error" && (
                           <span
-                            className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-2 py-0.5 text-xs font-semibold text-red-700"
+                            className="inline-flex items-center gap-1.5 rounded-full border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-700"
                             title={r.error}
                           >
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
                             error
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-slate-600">
-                        {r.segment ?? "—"}
+                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">
+                        {r.segment ?? (
+                          <span className="text-slate-300">—</span>
+                        )}
                       </td>
-                      <td className="px-4 py-3 text-slate-700">
+                      <td className="px-4 py-3 text-slate-700 max-w-md">
                         {r.status === "error" ? (
                           <span className="text-red-700 text-xs">
                             {r.error}
                           </span>
                         ) : (
                           r.rationale ?? (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-300">—</span>
                           )
                         )}
                       </td>
                     </tr>
                   );
                 })}
+                {filteredRows.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-12 text-center text-sm text-slate-500"
+                    >
+                      No rows match the current filters.{" "}
+                      <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="text-mews-700 underline decoration-dotted hover:text-mews-900"
+                      >
+                        Reset filters
+                      </button>
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -740,7 +997,7 @@ export default function BulkPage() {
         <section className="rounded-2xl border-2 border-dashed border-slate-200 bg-white/50 p-12 text-center">
           <div className="text-slate-500">
             Upload a CSV to get started. Each row is qualified against Mews ICP
-            and tagged 🟩 / 🟨 / 🟥.
+            and tagged green / amber / red.
           </div>
         </section>
       )}
