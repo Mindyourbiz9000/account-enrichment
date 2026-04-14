@@ -268,7 +268,19 @@ export default function Home() {
       <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
-          <form onSubmit={(e) => e.preventDefault()} className="grid gap-4 flex-1">
+          <form
+            onSubmit={(e) => {
+              // Pressing Enter in any input kicks off a Perplexity search —
+              // Perplexity is the default provider. The Claude button (when
+              // re-enabled) still has to be clicked explicitly.
+              if (loading) {
+                e.preventDefault();
+                return;
+              }
+              onSubmit(e, "perplexity");
+            }}
+            className="grid gap-4 flex-1"
+          >
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Hotel name
