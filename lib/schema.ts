@@ -92,9 +92,9 @@ export const HOTEL_RESEARCH_SCHEMA = {
         review_volume: { type: "string" },
         positive_themes: {
           type: "array",
-          maxItems: 3,
+          maxItems: 4,
           description:
-            "Recurring positive themes — at most 3, only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
+            "Recurring positive themes — at most 4, only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
           items: {
             type: "object",
             properties: {
@@ -140,9 +140,9 @@ export const HOTEL_RESEARCH_SCHEMA = {
         },
         negative_themes: {
           type: "array",
-          maxItems: 3,
+          maxItems: 4,
           description:
-            "Recurring complaints — at most 3, only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
+            "Recurring complaints — at most 4, only include a theme if you can back it with at least TWO verbatim quotes from separate reviews. Do not include one-off sentiments.",
           items: {
             type: "object",
             properties: {
@@ -195,9 +195,9 @@ export const HOTEL_RESEARCH_SCHEMA = {
     },
     key_challenges: {
       type: "array",
-      maxItems: 4,
+      maxItems: 5,
       description:
-        "Top operational or commercial challenges this hotel likely faces — at most 4, picked for their relevance to a Mews sales pitch. Only include a challenge if you can back it with at least TWO verbatim guest quotes from separate reviews (or, exceptionally, one quote PLUS a published source). One-off complaints do not belong here.",
+        "Top operational or commercial challenges this hotel likely faces — at most 5, picked for their relevance to a Mews sales pitch. Only include a challenge if you can back it with at least TWO verbatim guest quotes from separate reviews (or, exceptionally, one quote PLUS a published source). One-off complaints do not belong here.",
       items: {
         type: "object",
         properties: {

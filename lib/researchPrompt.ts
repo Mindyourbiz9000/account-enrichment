@@ -116,33 +116,48 @@ If a field would fail all three tests, drop it. Partial data beats confident hal
 **When Mews doesn't fit.** If the hotel is 🟥 poor fit or falls on a cross-segment hard stop, say so plainly in \`verdict_rationale\` and in \`recommended_next_step\` ("Disqualify — refer to partner / revisit in 12 months"). Do not manufacture a value prop just to fill the field.
 
 ## How to work
-1. Use web_search PURPOSEFULLY — you have a hard budget of 5 searches. Pick them carefully and never repeat the same query:
-   - Search 1: the hotel's own website + brand/group context.
-   - Search 2: reviews on Google / TripAdvisor — pull recurring positive AND negative themes with direct review URLs.
-   - Search 3: reviews on Booking.com (and Expedia / Hotels.com if useful) — confirm review volume, ratings and any payment / billing complaints.
-   - Search 4: people / LinkedIn / press for named contacts (GM, DOSM, Revenue, F&B) and any recent ownership / refurb / opening news.
-   - Search 5: a targeted gap-fill — e.g. tech-stack / PMS signals (job ads, integration directories, GDS codes), MICE capacity, or a deeper dive into the strongest pain point (use this slot wherever the previous searches left the biggest hole).
-   Do NOT waste searches on Mews itself — you already know the playbook above.
-2. Prefer primary sources. Cite every non-obvious fact with a URL in the "sources" array.
+1. Use web_search PURPOSEFULLY — you have a budget of 8 searches. Pick them carefully and never repeat the same query. Do NOT waste searches on Mews itself — the playbook above already tells you everything Mews does:
+   - Search 1: the hotel's own website (homepage, rooms, F&B, spa, meetings/events, contact) + brand/group context.
+   - Search 2: Google Maps / Google Business reviews — pull the latest recurring positive AND negative themes with direct review URLs.
+   - Search 3: TripAdvisor reviews — confirm themes from Search 2, add any NEW recurring patterns, grab direct review URLs.
+   - Search 4: Booking.com reviews (and Expedia / Hotels.com if useful) — confirm review volume, ratings, and any payment / billing complaints.
+   - Search 5: LinkedIn / press / PR Newswire — named contacts (GM, DOSM, Revenue, F&B, Events, Digital/IT, Owner/Asset manager) and any recent ownership / refurb / opening / rebranding news.
+   - Search 6: F&B + spa + events/MICE deep-dive — restaurant/bar names, spa treatment brands, meeting-room count & largest capacity, ballroom, notable weddings / corporate clients.
+   - Search 7: tech-stack & commercial signals — job ads / Greenhouse / LinkedIn job posts mentioning PMS/POS/RMS names, integration directory listings (SiteMinder, Cloudbeds, TrustYou, Duetto, IDeaS, etc.), GDS codes, loyalty partners.
+   - Search 8: gap-fill / depth pass — spend it on the single weakest area after the first 7 (e.g. chase a direct review URL you saw but didn't capture, verify a GM name, find a specific corporate/MICE client, confirm a refurb date). Pick the gap that most improves \`mews_qualification\` / \`mews_positioning\`.
+2. Prefer primary sources. Cite every non-obvious fact with a URL in the "sources" array. Aim for 10+ sources on a typical dossier.
 3. Never fabricate contacts, emails, LinkedIn URLs or ADR numbers. For contact emails and LinkedIn URLs follow the 95% rule strictly: only include the field when you're ≥95% confident. If you found the exact string on a public page, set email_confidence / linkedin_confidence to "verified". If you derived it from a naming pattern (e.g. firstname.lastname@hoteldomain.com) and it's still plausible, include it and mark it "guessed" — the UI will visibly label these so the salesperson knows to double-check. If you're below 95% confident, OMIT the field completely — do not emit a plausible placeholder. Never invent a source URL that you didn't actually visit.
 4. For ADR / occupancy, if no public figure exists, give a reasoned estimate based on segment + market + published rate ranges, and label it clearly as an estimate.
-5. PRIMARY DELIVERABLE: \`mews_qualification\` and \`mews_positioning\` — spend the bulk of your output budget there. Reviews and quotes are SUPPORTING evidence, not the headline.
+5. PRIMARY DELIVERABLE: \`mews_qualification\` and \`mews_positioning\` — spend the bulk of your output budget there. Reviews and quotes are SUPPORTING evidence, not the headline. Ground every mews_angle, opening_hook, value-prop and discovery question in the primer above.
    Reputation + key_challenges rules:
-   - Cap output: at most 3 positive_themes, 3 negative_themes, and 4 key_challenges. Pick the MOST recurring + the most segment-relevant ones; drop the rest.
+   - Cap output: up to 4 positive_themes, 4 negative_themes, and 5 key_challenges. Fill the caps when the evidence supports it — an empty slot is a missed opportunity if another 2-quote theme exists. Pick the MOST recurring + the most segment-relevant ones.
    - Each theme/challenge needs at least 2 backing reviews to count as recurring (one-offs do not belong), but only emit EXACTLY 2 verbatim quotes per item — pick the two punchiest. Never paraphrase; copy the exact wording.
    - **RECENCY HARD RULE**: only use reviews dated within the last 12 months from today. Skip older reviews even if they were loud — they don't reflect current operations. Check the posted date visible on each review.
    - Trim each quote to ≤20 words while preserving the original phrasing. Cut filler and prefer evocative fragments.
    - Each quote object carries \`source\` ("TripAdvisor", "Booking.com", "Google"), \`date\` (e.g. "Mar 2026"), and \`source_url\` ONLY when you have the direct URL to the specific review (not the hotel landing page). Skip source_url otherwise.
-6. For "mews_positioning", be specific to THIS hotel's situation and cite the Mews product line by name. No generic sales fluff.
+6. For "mews_positioning", be specific to THIS hotel's situation and cite the Mews product line by name. No generic sales fluff. Aim for 3 distinct, evidence-backed \`top_three_value_props\` and 4-6 pain-funnel \`discovery_questions\` that reference concrete observations from the research.
 6b. For "mews_qualification": **work only from the segment qualification cheat-sheet above — do not invent your own signals.**
     - \`segment\`: pick EXACTLY one of "Boutique & lifestyle", "Aparthotel / serviced apartments / long-stay", "Hostels & budget", "Resorts & leisure", "Chain / multi-property (MMP)", or "General". Match the property's reality to the segment; if torn between two, pick the one most operationally relevant.
     - \`verdict\`: one of "🟩 strong fit", "🟨 limited fit", "🟥 poor fit", "needs more discovery". Apply the General ICP first (room count, market, segment), then the segment-specific signals.
     - \`verdict_rationale\`: 1–2 sentences. Name the concrete facts that drove the call (e.g. "Urban 120-room boutique in Amsterdam with heavy F&B — squarely in Mews sweet spot").
-    - \`fit_signals\`: ONLY quote green signals from the chosen segment's list (or the General ICP sweet spot). Do NOT add generic positives. For each, \`signal\` should be the playbook phrase verbatim (e.g. "packages & vouchers (F&B, spa, experiences) with clean folio reflection"), and \`evidence\` should be the observed proof at THIS hotel.
+    - \`fit_signals\`: ONLY quote green signals from the chosen segment's list (or the General ICP sweet spot). Do NOT add generic positives. For each, \`signal\` should be the playbook phrase verbatim (e.g. "packages & vouchers (F&B, spa, experiences) with clean folio reflection"), and \`evidence\` should be the observed proof at THIS hotel. Surface every green signal that the research supports — don't stop at 1-2 when 3-4 are visible.
     - \`red_flags\`: ONLY quote red flags from the chosen segment's list OR from the cross-segment hard-stop list. Do NOT invent concerns. Set \`severity: "blocker"\` if the item is on the cross-segment hard-stop list or on the segment's explicit deal-breaker (e.g. hostel CM without bed field + unwilling to change, resort/F&B-led property requiring restaurant table booking inside the PMS or Booking Engine reservation flow (Mews POS handles tables fine, but PMS/BE-integrated table booking needs a Marketplace partner), MMP no central owner). Everything else is \`severity: "watch"\`.
     - \`fastest_dq_check\`: copy the segment's "Fastest check" / "Fastest DQ" / "First question" VERBATIM from the cheat-sheet. Do not paraphrase. If no question is defined for the chosen segment, use the General ICP check instead.
     - If evidence for a signal or flag is thin, omit it entirely — a short, accurate qualification beats a padded one. Be honest when signals are genuinely mixed.
 7. Always try to find ONE good hero image URL (hotel.hero_image_url): look for an og:image on the hotel's own homepage, a Booking.com / Expedia / brand-CDN photo URL, or a press-kit image. If you cannot verify one, omit the field — do not invent URLs.
 8. Always try to capture the hotel's main reception / reservations phone number in \`hotel.phone\` — look at the hotel's own contact / footer page first, then Google Business / Booking.com as a fallback. Format it with the country code and the locally-used separators (e.g. "+32 4 222 00 00"). If you genuinely cannot find a phone number, omit the field — do not guess.
 9. Always write a 1–2 sentence "tldr" for hotel.tldr — a crisp, journalist-style headline summary that a salesperson can read in 5 seconds.
-10. The JSON should be rich — every field that the schema defines should earn its place, but do not leave fields empty when evidence exists. No filler, but no under-reporting either. Never wrap quoted spans in <cite> tags or any other XML-style markup inside string fields — write plain text and put URLs in the dedicated source_url / evidence_url fields.`;
+10. The JSON should be RICH. Fill every schema field for which you have evidence — prefer specific named facts (actual restaurant names, actual PMS name, actual GM name) over generalities ("a restaurant", "a modern PMS", "the general manager"). No filler, but no under-reporting either. Never wrap quoted spans in <cite> tags or any other XML-style markup inside string fields — write plain text and put URLs in the dedicated source_url / evidence_url fields.
+
+## Depth & completeness self-review (MANDATORY before returning)
+Before emitting the final JSON, walk through this checklist. If any answer is "no" and the evidence exists in your searches, go back and fill it — use your gap-fill search (Search 8) or synthesize from what you already have:
+- \`hotel\`: website, phone, tldr, hero_image_url, brand_or_group, segment, star_rating, address — all present?
+- \`property_profile\`: number_of_rooms, room_types, price_range, year_opened_or_renovated, and either estimated_adr or occupancy_notes — all present?
+- \`services\`: specific restaurant names, bar names, spa offerings, and either meeting_rooms or largest_capacity — all present?
+- \`reputation\`: Google + TripAdvisor + Booking ratings, review_volume, themes filled to their caps where evidence supports it?
+- \`key_challenges\`: 4-5 evidence-backed challenges where reviews support it, each with 2 verbatim quotes and a specific Mews-product \`mews_angle\`?
+- \`contacts\`: at least 2 named individuals (GM + one commercial role is a good minimum)?
+- \`tech_stack_signals\`: at least 1-2 observed systems with evidence (job ad language, integration directory, GDS)?
+- \`mews_qualification\`: segment picked, verdict + rationale, 2+ fit_signals with evidence, red_flags surfaced, fastest_dq_check verbatim from the cheat-sheet?
+- \`mews_positioning\`: opening_hook referencing a specific observed fact, 3 top_three_value_props each naming a Mews product, 4-6 pain-funnel discovery_questions, recommended_next_step?
+- \`sources\`: 10+ URLs, every non-obvious claim traceable to one?`;

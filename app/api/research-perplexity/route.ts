@@ -162,7 +162,9 @@ Hotel: ${hotelName}
 City: ${city}
 Country: ${country}
 
-Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Mews positioning. Include source URLs.
+Cover everything the schema asks for: website, property profile, services (F&B, spa, events/MICE), reputation (review ratings + recurring themes filled to their caps where evidence supports it), key challenges tied to review evidence, named contacts for outreach, tech-stack signals, and a tailored Mews positioning. Ground \`mews_qualification\` and \`mews_positioning\` in the Mews playbook primer from the system prompt — quote segment fit-signals and red-flags verbatim from the cheat-sheet. Include source URLs (aim for 10+).
+
+Spend your full 8-search budget. Run the mandatory depth & completeness self-review checklist before returning.
 
 Return only the JSON object, no prose, no code fences.`;
 
@@ -191,6 +193,10 @@ Return only the JSON object, no prose, no code fences.`;
               // evidence (recent reviews, named contacts, tech-stack hints).
               // "medium" made outputs visibly lighter in testing.
               web_search_options: { search_context_size: "high" },
+              // Give the model enough room for a full rich JSON dossier.
+              // Under structured output, Perplexity's implicit cap can
+              // quietly truncate — an explicit ceiling prevents that.
+              max_tokens: 8000,
             }),
           },
         );
