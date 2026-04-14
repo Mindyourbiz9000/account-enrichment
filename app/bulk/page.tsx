@@ -67,18 +67,63 @@ function parseCsv(text: string): string[][] {
   return rows.filter((r) => r.some((c) => c.trim() !== ""));
 }
 
-// Map the first header row to our three required columns. Accept common
-// aliases ("hotel", "hotel name", "property"; "city", "town"; "country").
-function mapHeaders(
-  header: string[],
-): { name: number; city: number; country: number } | null {
-  const norm = header.map((h) => h.trim().toLowerCase());
-  const find = (...aliases: string[]) =>
-    norm.findIndex((h) => aliases.includes(h));
-  const name = find("hotel", "hotel name", "name", "property", "property name");
-  const city = find("city", "town");
-  const country = find("country");
-  if (name === -1 || city === -1 || country === -1) return null;
+// Auto-detect which column in the CSV header most likely maps to our
+// three required fields. Uses a scored keyword match so common alternates
+// ("BuildingName", "Property Name", "Country Code") still find a home.
+// The user can always override the guess via the dropdowns in the UI.
+type Mapping = { name: number; city: number; country: number };
+
+const NAME_KEYWORDS = [
+  "hotel name",
+  "hotel",
+  "property name",
+  "property",
+  "building name",
+  "buildingname",
+  "account name",
+  "account",
+  "company name",
+  "company",
+  "name",
+];
+const CITY_KEYWORDS = ["city", "town", "locality", "municipality"];
+const COUNTRY_KEYWORDS = ["country", "country name", "nation"];
+
+function scoreHeader(header: string, keywords: string[]): number {
+  const h = header.trim().toLowerCase().replace(/[_\-]+/g, " ");
+  let best = 0;
+  for (let i = 0; i < keywords.length; i++) {
+    const kw = keywords[i];
+    // Earlier keywords outrank later ones so "hotel name" beats "name".
+    const priority = keywords.length - i;
+    if (h === kw) return priority * 10;
+    if (h.includes(kw)) best = Math.max(best, priority * 4);
+  }
+  return best;
+}
+
+function autoDetectMapping(headers: string[]): Mapping {
+  const pick = (keywords: string[], exclude: Set<number>): number => {
+    let bestIdx = -1;
+    let bestScore = 0;
+    for (let i = 0; i < headers.length; i++) {
+      if (exclude.has(i)) continue;
+      const s = scoreHeader(headers[i], keywords);
+      if (s > bestScore) {
+        bestScore = s;
+        bestIdx = i;
+      }
+    }
+    return bestIdx;
+  };
+  // City is the most distinctive — pick it first so "BuildingName" doesn't
+  // accidentally steal the city slot via a generic "name" match.
+  const excluded = new Set<number>();
+  const city = pick(CITY_KEYWORDS, excluded);
+  if (city !== -1) excluded.add(city);
+  const country = pick(COUNTRY_KEYWORDS, excluded);
+  if (country !== -1) excluded.add(country);
+  const name = pick(NAME_KEYWORDS, excluded);
   return { name, city, country };
 }
 
@@ -166,53 +211,88 @@ export default function BulkPage() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  // Raw CSV state so the user can re-pick columns after upload.
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [dataRowsRaw, setDataRowsRaw] = useState<string[][]>([]);
+  const [mapping, setMapping] = useState<Mapping>({
+    name: -1,
+    city: -1,
+    country: -1,
+  });
   const abortRef = useRef<AbortController | null>(null);
 
   const updateRow = useCallback((id: number, patch: Partial<Row>) => {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   }, []);
 
-  const onFile = useCallback(async (file: File) => {
-    setParseError(null);
-    setRows([]);
-    setFileName(file.name);
-    const text = await file.text();
-    const parsed = parseCsv(text);
-    if (parsed.length < 2) {
-      setParseError("CSV must have a header row and at least one data row.");
-      return;
-    }
-    const headers = mapHeaders(parsed[0]);
-    if (!headers) {
-      setParseError(
-        "Could not find required columns. Expected headers: hotel (or hotel name / property), city, country.",
-      );
-      return;
-    }
-    const dataRows: Row[] = [];
-    for (let i = 1; i < parsed.length; i++) {
-      const cols = parsed[i];
-      const hotelName = (cols[headers.name] ?? "").trim();
-      const city = (cols[headers.city] ?? "").trim();
-      const country = (cols[headers.country] ?? "").trim();
-      if (!hotelName || !city || !country) continue;
-      dataRows.push({
-        id: i,
-        hotelName,
-        city,
-        country,
-        status: "pending",
+  // Rebuild the row list from the raw CSV whenever the mapping changes.
+  // This resets any in-flight results — the hotel/city/country values have
+  // effectively changed, so stale verdicts would be misleading.
+  const applyMapping = useCallback(
+    (next: Mapping, raw: string[][]) => {
+      const built: Row[] = [];
+      for (let i = 0; i < raw.length; i++) {
+        const cols = raw[i];
+        const hotelName =
+          next.name >= 0 ? (cols[next.name] ?? "").trim() : "";
+        const city = next.city >= 0 ? (cols[next.city] ?? "").trim() : "";
+        const country =
+          next.country >= 0 ? (cols[next.country] ?? "").trim() : "";
+        if (!hotelName || !city || !country) continue;
+        built.push({
+          id: i + 1,
+          hotelName,
+          city,
+          country,
+          status: "pending",
+        });
+      }
+      setRows(built);
+    },
+    [],
+  );
+
+  const onFile = useCallback(
+    async (file: File) => {
+      setParseError(null);
+      setRows([]);
+      setHeaders([]);
+      setDataRowsRaw([]);
+      setMapping({ name: -1, city: -1, country: -1 });
+      setFileName(file.name);
+      const text = await file.text();
+      const parsed = parseCsv(text);
+      if (parsed.length < 2) {
+        setParseError("CSV must have a header row and at least one data row.");
+        return;
+      }
+      const hdr = parsed[0].map((h) => h.trim());
+      const raw = parsed.slice(1);
+      setHeaders(hdr);
+      setDataRowsRaw(raw);
+      const guess = autoDetectMapping(hdr);
+      setMapping(guess);
+      applyMapping(guess, raw);
+    },
+    [applyMapping],
+  );
+
+  const onChangeMapping = useCallback(
+    (field: keyof Mapping, value: number) => {
+      setMapping((prev) => {
+        const next = { ...prev, [field]: value };
+        applyMapping(next, dataRowsRaw);
+        return next;
       });
-    }
-    if (dataRows.length === 0) {
-      setParseError("No valid data rows found.");
-      return;
-    }
-    setRows(dataRows);
-  }, []);
+    },
+    [applyMapping, dataRowsRaw],
+  );
+
+  const mappingComplete =
+    mapping.name >= 0 && mapping.city >= 0 && mapping.country >= 0;
 
   const onRun = useCallback(async () => {
-    if (rows.length === 0 || running) return;
+    if (rows.length === 0 || running || !mappingComplete) return;
     setRunning(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
@@ -235,7 +315,7 @@ export default function BulkPage() {
       setRunning(false);
       abortRef.current = null;
     }
-  }, [rows, running, updateRow]);
+  }, [rows, running, mappingComplete, updateRow]);
 
   const onCancel = useCallback(() => {
     abortRef.current?.abort();
@@ -353,7 +433,8 @@ export default function BulkPage() {
           {rows.length > 0 && !running && (
             <button
               onClick={onRun}
-              className="rounded-lg bg-mews-900 hover:bg-slate-800 text-white font-medium px-4 py-2 text-sm transition"
+              disabled={!mappingComplete}
+              className="rounded-lg bg-mews-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-medium px-4 py-2 text-sm transition"
             >
               {doneCount > 0 ? "Re-run qualification" : "Run qualification"}
             </button>
@@ -382,13 +463,136 @@ export default function BulkPage() {
           </div>
         )}
 
-        <div className="mt-4 text-xs text-slate-500">
-          Expected CSV columns (header row required):{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5">hotel</code>,{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5">city</code>,{" "}
-          <code className="rounded bg-slate-100 px-1 py-0.5">country</code>.
-          Aliases accepted: <em>hotel name / property</em>, <em>town</em>.
-        </div>
+        {/* Column mapping — shown as soon as a CSV is parsed. We pre-fill
+            best-guess values but any column can be reassigned. */}
+        {headers.length > 0 && (
+          <div className="mt-5 border-t border-slate-200 pt-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div>
+                <div className="text-sm font-semibold text-slate-800">
+                  Column mapping
+                </div>
+                <div className="text-xs text-slate-500 mt-0.5">
+                  {mappingComplete
+                    ? `Mapped — ${rows.length} valid row${rows.length === 1 ? "" : "s"} ready to qualify.`
+                    : "Pick which CSV column holds the hotel name, city, and country."}
+                </div>
+              </div>
+              {mappingComplete && (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  mapping complete
+                </span>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              {(
+                [
+                  {
+                    key: "name" as const,
+                    label: "Hotel name",
+                    hint: "e.g. BuildingName, Property, Hotel",
+                  },
+                  {
+                    key: "city" as const,
+                    label: "City",
+                    hint: "e.g. City, Town, Locality",
+                  },
+                  {
+                    key: "country" as const,
+                    label: "Country",
+                    hint: "e.g. Country, Country Name",
+                  },
+                ]
+              ).map((f) => (
+                <div key={f.key}>
+                  <label className="block text-xs font-medium text-slate-700 mb-1">
+                    {f.label}
+                    <span className="ml-1 text-red-500">*</span>
+                  </label>
+                  <select
+                    value={mapping[f.key]}
+                    onChange={(e) =>
+                      onChangeMapping(f.key, Number(e.target.value))
+                    }
+                    className={`w-full rounded-lg border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mews-500 ${
+                      mapping[f.key] === -1
+                        ? "border-red-300 bg-red-50/40 text-slate-700"
+                        : "border-slate-300 bg-white text-slate-900"
+                    }`}
+                  >
+                    <option value={-1}>— Select a column —</option>
+                    {headers.map((h, i) => (
+                      <option key={i} value={i}>
+                        {h || `(unnamed column ${i + 1})`}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="text-[11px] text-slate-400 mt-1">
+                    {f.hint}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Preview — show the first 3 data rows with the mapping
+                applied so the user can sanity-check before running. */}
+            {mappingComplete && rows.length > 0 && (
+              <div className="mt-4 rounded-lg border border-slate-200 overflow-hidden">
+                <div className="px-3 py-2 bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 font-semibold border-b border-slate-200">
+                  Preview (first {Math.min(3, rows.length)} of {rows.length})
+                </div>
+                <table className="w-full text-xs">
+                  <thead className="bg-white text-left text-[11px] uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-3 py-1.5 font-medium">Hotel</th>
+                      <th className="px-3 py-1.5 font-medium">City</th>
+                      <th className="px-3 py-1.5 font-medium">Country</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.slice(0, 3).map((r) => (
+                      <tr key={r.id} className="border-t border-slate-100">
+                        <td className="px-3 py-1.5 text-slate-800">
+                          {r.hotelName}
+                        </td>
+                        <td className="px-3 py-1.5 text-slate-700">
+                          {r.city}
+                        </td>
+                        <td className="px-3 py-1.5 text-slate-700">
+                          {r.country}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {mappingComplete &&
+              rows.length === 0 &&
+              dataRowsRaw.length > 0 && (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                  Mapping is set but no rows have values in all three columns.
+                  Double-check the picked columns or the CSV contents.
+                </div>
+              )}
+          </div>
+        )}
+
+        {headers.length === 0 && (
+          <div className="mt-4 text-xs text-slate-500">
+            Upload any CSV with a header row. After upload you can map any
+            column to <em>hotel name</em>, <em>city</em>, and{" "}
+            <em>country</em> — headers like{" "}
+            <code className="rounded bg-slate-100 px-1 py-0.5">
+              BuildingName
+            </code>{" "}
+            or{" "}
+            <code className="rounded bg-slate-100 px-1 py-0.5">Property</code>{" "}
+            are auto-detected.
+          </div>
+        )}
       </section>
 
       {/* Progress + summary */}
