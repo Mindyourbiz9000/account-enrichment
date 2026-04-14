@@ -336,10 +336,14 @@ export default function Home() {
                     : "Run Deep Search (Claude)"}
                 </button>
               )}
+              {/* type="submit" so this is the form's default button — pressing
+                  Enter in any input triggers implicit form submission, which
+                  the form's onSubmit handler turns into a Perplexity search.
+                  Clicking the button goes through the same onSubmit path, so
+                  we don't need a duplicate onClick here. */}
               <button
-                type="button"
+                type="submit"
                 disabled={loading}
-                onClick={(e) => onSubmit(e, "perplexity")}
                 className="rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
               >
                 {loading && provider === "perplexity"
