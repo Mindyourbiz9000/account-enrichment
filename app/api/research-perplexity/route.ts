@@ -179,7 +179,6 @@ Return only the JSON object, no prose, no code fences.`;
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: userPrompt },
               ],
-              stream: true,
             }),
           },
         );
@@ -208,12 +207,6 @@ Return only the JSON object, no prose, no code fences.`;
           return;
         }
 
-        if (!perplexityRes.body) {
-          send({ type: "error", error: "No response body from Perplexity" });
-          finish();
-          return;
-        }
-
         send({
           type: "log",
           level: "search",
@@ -221,61 +214,17 @@ Return only the JSON object, no prose, no code fences.`;
           t: elapsed(),
         });
 
-        // Consume the SSE stream from Perplexity
-        const reader = perplexityRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = "";
-        let fullContent = "";
-        let inputTokens = 0;
-        let outputTokens = 0;
-        let charsEmittedAt = 0;
+        // Use non-streaming so we get a single, reliable JSON response.
+        // The heartbeat above keeps the SSE connection alive and shows
+        // "Still working…" while we wait.
+        const data = (await perplexityRes.json()) as {
+          choices?: { message?: { content?: string }; finish_reason?: string }[];
+          usage?: { prompt_tokens?: number; completion_tokens?: number };
+        };
 
-        outer: while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const parts = buffer.split("\n\n");
-          buffer = parts.pop() ?? "";
-
-          for (const part of parts) {
-            const line = part.trim();
-            if (!line.startsWith("data:")) continue;
-            const payload = line.slice(5).trim();
-            if (payload === "[DONE]") break outer;
-            let chunk: {
-              choices?: { delta?: { content?: string }; finish_reason?: string }[];
-              usage?: { prompt_tokens?: number; completion_tokens?: number };
-            };
-            try {
-              chunk = JSON.parse(payload);
-            } catch {
-              continue;
-            }
-
-            const delta = chunk.choices?.[0]?.delta?.content;
-            if (delta) {
-              fullContent += delta;
-              if (fullContent.length - charsEmittedAt > 1000) {
-                charsEmittedAt = fullContent.length;
-                send({
-                  type: "log",
-                  level: "compose",
-                  message: `…${fullContent.length.toLocaleString()} chars written`,
-                  t: elapsed(),
-                });
-              }
-            }
-
-            if (chunk.usage) {
-              inputTokens = chunk.usage.prompt_tokens ?? 0;
-              outputTokens = chunk.usage.completion_tokens ?? 0;
-            }
-
-            if (chunk.choices?.[0]?.finish_reason === "stop") {
-              break outer;
-            }
-          }
-        }
+        const fullContent = data.choices?.[0]?.message?.content ?? "";
+        const inputTokens = data.usage?.prompt_tokens ?? 0;
+        const outputTokens = data.usage?.completion_tokens ?? 0;
 
         send({
           type: "log",
