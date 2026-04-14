@@ -41,6 +41,7 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
+  const [provider, setProvider] = useState<"claude" | "perplexity" | null>(null);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [thinking, setThinking] = useState("");
@@ -129,8 +130,12 @@ export default function Home() {
     setTimeout(() => window.print(), 50);
   }, []);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(
+    e: React.FormEvent,
+    chosenProvider: "claude" | "perplexity",
+  ) {
     e.preventDefault();
+    setProvider(chosenProvider);
     setLoading(true);
     setLogs([]);
     setThinking("");
@@ -141,8 +146,13 @@ export default function Home() {
     setError(null);
     setRawOutput(null);
 
+    const endpoint =
+      chosenProvider === "perplexity"
+        ? "/api/research-perplexity"
+        : "/api/research";
+
     try {
-      const res = await fetch("/api/research", {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hotelName, city, country }),
@@ -252,7 +262,7 @@ export default function Home() {
       <div className="no-print mb-8 grid md:grid-cols-2 gap-6 items-stretch">
         {/* Form */}
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
-          <form onSubmit={onSubmit} className="grid gap-4 flex-1">
+          <form onSubmit={(e) => e.preventDefault()} className="grid gap-4 flex-1">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Hotel name
@@ -291,13 +301,28 @@ export default function Home() {
                 />
               </div>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition mt-auto"
-            >
-              {loading ? "Researching…" : "Run deep research"}
-            </button>
+            <div className="grid grid-cols-2 gap-3 mt-auto">
+              <button
+                type="button"
+                disabled={loading}
+                onClick={(e) => onSubmit(e, "claude")}
+                className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
+              >
+                {loading && provider === "claude"
+                  ? "Researching…"
+                  : "Run Deep Search (Claude)"}
+              </button>
+              <button
+                type="button"
+                disabled={loading}
+                onClick={(e) => onSubmit(e, "perplexity")}
+                className="rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
+              >
+                {loading && provider === "perplexity"
+                  ? "Researching…"
+                  : "Run Deep Search (Perplexity)"}
+              </button>
+            </div>
           </form>
         </section>
 
@@ -351,7 +376,9 @@ export default function Home() {
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-mews-600" />
                   </span>
                   <span>
-                    Connecting to Claude — first search can take 30–60s…
+                    Connecting to{" "}
+                    {provider === "perplexity" ? "Perplexity" : "Claude"} —
+                    first search can take 30–60s…
                   </span>
                 </div>
               )}
