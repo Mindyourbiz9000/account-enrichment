@@ -41,7 +41,7 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
-  const [provider, setProvider] = useState<"perplexity" | "perplexity+r1" | null>(null);
+  const [provider, setProvider] = useState<"perplexity+r1" | null>(null);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [thinking, setThinking] = useState("");
@@ -130,12 +130,9 @@ export default function Home() {
     setTimeout(() => window.print(), 50);
   }, []);
 
-  async function onSubmit(
-    e: React.FormEvent,
-    chosenProvider: "perplexity" | "perplexity+r1",
-  ) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setProvider(chosenProvider);
+    setProvider("perplexity+r1");
     setLoading(true);
     setLogs([]);
     setThinking("");
@@ -146,10 +143,7 @@ export default function Home() {
     setError(null);
     setRawOutput(null);
 
-    const endpoint =
-      chosenProvider === "perplexity+r1"
-        ? "/api/research-and-analyze"
-        : "/api/research-perplexity";
+    const endpoint = "/api/research-and-analyze";
 
     try {
       const res = await fetch(endpoint, {
@@ -264,13 +258,11 @@ export default function Home() {
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
           <form
             onSubmit={(e) => {
-              // Pressing Enter in any input kicks off a standard Perplexity
-              // search — it is the default (type="submit") action.
               if (loading) {
                 e.preventDefault();
                 return;
               }
-              onSubmit(e, "perplexity");
+              onSubmit(e);
             }}
             className="grid gap-4 flex-1"
           >
@@ -312,30 +304,13 @@ export default function Home() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 mt-auto">
-              {/* type="submit" — pressing Enter in any input fires a
-                  standard Perplexity sonar-pro search (fast, no analysis). */}
+            <div className="mt-auto">
               <button
                 type="submit"
                 disabled={loading}
-                className="rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
+                className="w-full rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
               >
-                {loading && provider === "perplexity"
-                  ? "Searching…"
-                  : "Run Deep Search"}
-              </button>
-              {/* Two-stage pipeline: sonar-pro gathers the raw research,
-                  then r1-1776 applies deep playbook reasoning to produce
-                  the qualification, challenges, and positioning. */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={(e) => onSubmit(e, "perplexity+r1")}
-                className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
-              >
-                {loading && provider === "perplexity+r1"
-                  ? "Analyzing…"
-                  : "Deep Research + AI Analysis"}
+                {loading ? "Researching…" : "Run Deep Search"}
               </button>
             </div>
           </form>
@@ -391,11 +366,7 @@ export default function Home() {
                     <span className="relative inline-flex rounded-full h-3 w-3 bg-mews-600" />
                   </span>
                   <span>
-                    Connecting to{" "}
-                    {provider === "perplexity+r1"
-                      ? "Perplexity + r1-1776"
-                      : "Perplexity"}{" "}
-                    — first search can take 30–60s…
+                    Connecting to Perplexity — first search can take 30–60s…
                   </span>
                 </div>
               )}
