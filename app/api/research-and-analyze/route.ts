@@ -366,11 +366,10 @@ Return ONLY the refined dossier JSON object. No prose, no code fences.`;
                 Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
               },
               body: JSON.stringify({
-                // r1-1776 is Perplexity's offline DeepSeek-R1 reasoning model —
-                // no live web access, pure chain-of-thought analysis. Ideal for
-                // applying the Mews playbook to the Stage-1 data without
-                // generating new searches we don't need.
-                model: "r1-1776",
+                // sonar-reasoning-pro is Perplexity's most capable reasoning
+                // model — extended chain-of-thought, ideal for applying the
+                // Mews playbook to the Stage-1 dossier.
+                model: "sonar-reasoning-pro",
                 messages: [
                   { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
                   { role: "user", content: analysisUserPrompt },

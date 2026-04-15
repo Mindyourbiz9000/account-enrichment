@@ -1,12 +1,11 @@
 // System prompt for the Perplexity r1-1776 *analysis* stage.
 //
-// r1-1776 is Perplexity's offline DeepSeek-R1-based reasoning model. It has
-// no live web access — it works entirely from what it is given. That makes it
-// ideal for Stage 2 of the research pipeline: it receives the raw dossier
-// that Perplexity sonar-pro already gathered from the web, reasons deeply
-// through the Mews playbook, and returns a refined dossier where the
-// analytical sections (key_challenges, mews_qualification, mews_positioning)
-// are sales-ready.
+// sonar-reasoning-pro is Perplexity's most capable reasoning model — extended
+// chain-of-thought analysis ideal for Stage 2 of the research pipeline. It
+// receives the raw dossier that sonar-pro already gathered from the web,
+// reasons deeply through the Mews playbook, and returns a refined dossier
+// where the analytical sections (key_challenges, mews_qualification,
+// mews_positioning) are sales-ready.
 //
 // Factual sections (hotel, property_profile, services, reputation, contacts,
 // tech_stack_signals, sources) are preserved verbatim from Stage 1 — r1-1776
