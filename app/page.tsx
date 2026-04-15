@@ -55,6 +55,7 @@ export default function Home() {
   const [rawOutput, setRawOutput] = useState<string | null>(null);
 
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [logs, thinking]);
@@ -105,6 +106,13 @@ export default function Home() {
     setWaitSeconds(0);
   }, [logs.length, thinking]);
 
+  // Abort any in-flight SSE request when the component unmounts.
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const handleExportPdf = useCallback(() => {
     // Open every <details> in the dossier so the PDF captures every section
     // in full. Remember each element's original state and restore after the
@@ -145,11 +153,17 @@ export default function Home() {
 
     const endpoint = "/api/research-and-analyze";
 
+    // Abort any previous in-flight request, then create a fresh controller.
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ hotelName, city, country }),
+        signal: controller.signal,
       });
 
       if (
@@ -201,6 +215,8 @@ export default function Home() {
         }
       }
     } catch (err) {
+      // Ignore AbortError — this is intentional cancellation (unmount / new submit).
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
       setLoading(false);

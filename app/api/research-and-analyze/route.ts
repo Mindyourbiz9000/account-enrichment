@@ -98,11 +98,31 @@ async function fetchOgImage(pageUrl: string): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  const { hotelName, city, country } = await req.json();
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
+    return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Sanitize inputs to prevent prompt injection: enforce string type,
+  // strip newlines / control characters, and cap length.
+  const sanitize = (val: unknown): string | null => {
+    if (typeof val !== "string") return null;
+    const s = val.trim().replace(/[\r\n\t\x00-\x1f\x7f]+/g, " ").trim();
+    return s.length > 0 && s.length <= 200 ? s : null;
+  };
+
+  const hotelName = sanitize(body.hotelName);
+  const city = sanitize(body.city);
+  const country = sanitize(body.country);
 
   if (!hotelName || !city || !country) {
     return new Response(
-      JSON.stringify({ error: "hotelName, city and country are required" }),
+      JSON.stringify({ error: "hotelName, city and country are required (strings, max 200 chars each)" }),
       { status: 400, headers: { "Content-Type": "application/json" } },
     );
   }
@@ -469,10 +489,12 @@ Return ONLY the refined dossier JSON object. No prose, no code fences.`;
               : undefined,
           elapsed: elapsed(),
         });
-        finish();
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         send({ type: "error", error: msg });
+      } finally {
+        // Always close the stream — prevents hanging clients if an
+        // unexpected exception bypasses an earlier finish() call.
         finish();
       }
     },

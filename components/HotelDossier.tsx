@@ -1,5 +1,16 @@
 import React, { useState } from "react";
 
+/** Only allow http/https URLs from model output — blocks javascript:, data:, etc. */
+function safeUrl(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  try {
+    const { protocol } = new URL(url);
+    return protocol === "http:" || protocol === "https:" ? url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Phone number with a clickable "tel:" link and a copy-to-clipboard
  *  button. Shows a brief "Copied!" confirmation on success. Hidden in
  *  print (the PDF doesn't need an interactive copy button). */
@@ -127,9 +138,9 @@ function SupportingQuotes({
             {(q.source || q.source_url || q.date) && (
               <span className="block mt-0.5 text-[10.5px] text-slate-500">
                 —{" "}
-                {q.source_url ? (
+                {safeUrl(q.source_url) ? (
                   <a
-                    href={q.source_url}
+                    href={safeUrl(q.source_url)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="underline decoration-dotted underline-offset-2 hover:text-mews-700"
@@ -341,9 +352,9 @@ function PressList({
         if (!item) return null;
         return (
           <li key={i}>
-            {item.source_url ? (
+            {safeUrl(item.source_url) ? (
               <a
-                href={item.source_url}
+                href={safeUrl(item.source_url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline decoration-dotted decoration-slate-400 underline-offset-2 hover:text-mews-700"
@@ -592,7 +603,7 @@ function HeroCard({ dossier }: { dossier: HotelDossier }) {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
             {h.website && (
               <a
-                href={h.website}
+                href={safeUrl(h.website)}
                 target="_blank"
                 rel="noreferrer"
                 className="text-xs text-mews-700 underline decoration-dotted break-all"
@@ -1037,7 +1048,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                               </span>
                             )}
                             <a
-                              href={c.linkedin}
+                              href={safeUrl(c.linkedin)}
                               target="_blank"
                               rel="noreferrer"
                               className={
@@ -1086,7 +1097,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
           value={
             h.website ? (
               <a
-                href={h.website}
+                href={safeUrl(h.website)}
                 target="_blank"
                 rel="noreferrer"
                 className="text-mews-600 underline"
@@ -1303,7 +1314,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
             {dossier.sources.map((url, i) => (
               <li key={i}>
                 <a
-                  href={url}
+                  href={safeUrl(url)}
                   target="_blank"
                   rel="noreferrer"
                   className="text-mews-600 underline break-all"
