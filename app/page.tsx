@@ -308,7 +308,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
+                className="w-full rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
               >
                 {loading ? "Researching…" : "Run Deep Search"}
               </button>
