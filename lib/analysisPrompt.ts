@@ -102,6 +102,7 @@ Scan the dossier for ANY of these and flag the matching challenge:
 Produce 4–6 challenges, ranked by sales impact. Mix evidence types:
 
 - **\`guest_reviews\`**: Requires ≥2 verbatim quotes pulled from the dossier's \`reputation.positive_themes\` or \`reputation.negative_themes\` quote arrays. Use the exact quote text. If fewer than 2 quotes exist for a candidate challenge, switch evidence_type or drop it. Set \`payment_related: true\` if the Payments radar above matches.
+  **QUOTE RELEVANCE GATE**: every quote must explicitly name the pain in the challenge. A "slow check-in / queue" challenge requires quotes containing words like "wait", "queue", "check-in", "long", "slow", "line", "reception". A review praising friendly staff ("très sympa", "accueillant", "helpful") does NOT evidence a queue problem and must not be used. If the dossier has no quotes that directly name the pain, switch to \`segment_profile\` with an \`evidence_basis\` sentence — do not attach irrelevant reviews.
 - **\`segment_profile\`**: No quotes needed. Write one sentence in \`evidence_basis\` citing the hotel's segment + size + services from the dossier and the relevant playbook pattern.
 - **\`tech_stack\`**: No quotes needed. Name the observed system (from \`tech_stack_signals\`) and the pain it creates in \`evidence_basis\`.
 - **\`services_gap\`**: No quotes needed. Name the service a peer property would have but this hotel appears to lack, with evidence from the dossier.
