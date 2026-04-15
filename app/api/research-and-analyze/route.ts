@@ -32,6 +32,20 @@ function stripCitationTags(text: string): string {
     .replace(/<\/?antml:cite\b[^>]*>/gi, "");
 }
 
+/** Minimum viability check for a dossier before sending it to the caller.
+ *  A truncated or hallucinated response can parse as valid JSON but still
+ *  be missing the fields the UI requires — catch that here rather than
+ *  silently serving garbage to the sales rep. */
+function isDossierUsable(dossier: unknown): boolean {
+  if (!dossier || typeof dossier !== "object") return false;
+  const d = dossier as Record<string, unknown>;
+  const hotel = d.hotel as Record<string, unknown> | undefined;
+  if (!hotel?.name || typeof hotel.name !== "string" || !hotel.name.trim())
+    return false;
+  if (!Array.isArray(d.contacts)) return false;
+  return true;
+}
+
 function extractJson(text: string): unknown {
   const cleaned = stripCitationTags(text);
   try {
@@ -323,6 +337,16 @@ Return only the JSON object, no prose, no code fences.`;
           return;
         }
 
+        if (!isDossierUsable(rawDossier)) {
+          send({
+            type: "error",
+            error:
+              "Stage 1 returned an incomplete dossier (missing hotel name or contacts) — the response may have been truncated. Please try again.",
+          });
+          finish();
+          return;
+        }
+
         // Enrich with hero image from the hotel's own site before Stage 2
         // so the analysis dossier already has the image URL.
         const d = rawDossier as {
@@ -453,9 +477,17 @@ Return ONLY the refined dossier JSON object. No prose, no code fences.`;
 
           finalDossier = extractJson(stage2Content);
         } catch (err) {
-          // Stage 2 failure is non-fatal — fall back to the Stage-1 dossier
-          // so the user still gets a result.
           const msg = err instanceof Error ? err.message : String(err);
+          // Stage 2 failure is non-fatal only when Stage 1 produced a usable
+          // dossier. If Stage 1 is also incomplete, fail hard rather than
+          // silently serving a broken result to the sales rep.
+          if (!isDossierUsable(rawDossier)) {
+            send({
+              type: "error",
+              error: `Stage 2 failed and Stage 1 dossier is also incomplete — please try again. (${msg})`,
+            });
+            return; // finish() runs in the outer finally
+          }
           send({
             type: "log",
             level: "warn",
