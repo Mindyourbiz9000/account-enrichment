@@ -165,7 +165,7 @@ If a field would fail all three tests, drop it. Partial data beats confident hal
 5. PRIMARY DELIVERABLE: \`mews_qualification\`, \`mews_positioning\`, and \`key_challenges\` — spend the bulk of your output budget there. Ground every mews_angle, opening_hook, value-prop and discovery question in the primer above.
    **Reputation rules (positive_themes / negative_themes):**
    - Cap: up to 4 positive_themes and 4 negative_themes. Each theme needs ≥2 verbatim quotes from separate recent reviews. One-offs do not belong here.
-   - Emit EXACTLY 2 verbatim quotes per theme — pick the two punchiest. Never paraphrase.
+   - Emit ALL supporting quotes (minimum 2, up to as many as you found) — include every verbatim quote that backs the theme, not just the top 2. Never paraphrase.
    - **RECENCY HARD RULE**: only use reviews dated within the last 12 months from today.
    - Trim each quote to ≤20 words while preserving the original wording.
    - Each quote carries \`source\`, \`date\`, and \`source_url\` ONLY when you have the direct review URL.

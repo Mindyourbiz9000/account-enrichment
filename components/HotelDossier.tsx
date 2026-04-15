@@ -185,6 +185,7 @@ export type HotelDossier = {
     price_range?: string;
     estimated_adr?: string;
     occupancy_notes?: string;
+    local_market_context?: string;
     year_opened_or_renovated?: string;
   };
   services?: {
@@ -233,12 +234,16 @@ export type HotelDossier = {
     phone?: string;
     linkedin?: string;
     linkedin_confidence?: "verified" | "guessed";
+    tenure_confidence?: "current" | "stale_risk" | "unverified" | "conflicting_sources";
+    source_date?: string;
     source?: string;
   }>;
   tech_stack_signals?: Array<{
     system: string;
     category?: string;
     evidence?: string;
+    confidence?: "high" | "medium" | "low";
+    evidence_url?: string;
   }>;
   mews_positioning?: {
     opening_hook?: string;
@@ -1012,9 +1017,27 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                 {dossier.contacts.map((c, i) => {
                   const emailGuessed = c.email_confidence === "guessed";
                   const linkedinGuessed = c.linkedin_confidence === "guessed";
+                  const tenureBadge =
+                    c.tenure_confidence === "stale_risk"
+                      ? { label: "⚠ stale", className: "bg-amber-100 text-amber-800" }
+                      : c.tenure_confidence === "conflicting_sources"
+                        ? { label: "⚠ conflicting", className: "bg-red-100 text-red-800" }
+                        : c.tenure_confidence === "unverified"
+                          ? { label: "unverified", className: "bg-slate-100 text-slate-600" }
+                          : null;
                   return (
                     <tr key={i} className="border-b border-slate-100 align-top">
-                      <td className="py-2 pr-4">{c.name ?? "Unknown"}</td>
+                      <td className="py-2 pr-4">
+                        <div>{c.name ?? "Unknown"}</div>
+                        {tenureBadge && (
+                          <span className={`inline-block mt-0.5 rounded text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 ${tenureBadge.className}`}>
+                            {tenureBadge.label}
+                          </span>
+                        )}
+                        {c.source_date && (
+                          <div className="text-[10px] text-slate-400 mt-0.5">{c.source_date}</div>
+                        )}
+                      </td>
                       <td className="py-2 pr-4">{c.role}</td>
                       <td className="py-2 pr-4">
                         {c.email ? (
@@ -1120,6 +1143,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
         <Row label="Estimated ADR" value={p.estimated_adr} />
         <Row label="Occupancy" value={p.occupancy_notes} />
         <Row label="Opened / renovated" value={p.year_opened_or_renovated} />
+        <Row label="Local market" value={p.local_market_context} />
       </Section>
 
       {/* ── Reputation ── */}
@@ -1292,17 +1316,42 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
       {dossier.tech_stack_signals?.length ? (
         <Section title="Tech stack signals">
           <ul className="space-y-2 text-sm">
-            {dossier.tech_stack_signals.map((t, i) => (
-              <li key={i}>
-                <span className="font-medium">{t.system}</span>
-                {t.category ? (
-                  <span className="text-slate-500"> · {t.category}</span>
-                ) : null}
-                {t.evidence ? (
-                  <div className="text-slate-600">{t.evidence}</div>
-                ) : null}
-              </li>
-            ))}
+            {dossier.tech_stack_signals.map((t, i) => {
+              const confBadge =
+                t.confidence === "high"
+                  ? { label: "high", className: "bg-emerald-100 text-emerald-800" }
+                  : t.confidence === "medium"
+                    ? { label: "medium", className: "bg-amber-100 text-amber-800" }
+                    : t.confidence === "low"
+                      ? { label: "inferred", className: "bg-slate-100 text-slate-600" }
+                      : null;
+              return (
+                <li key={i}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{t.system}</span>
+                    {t.category ? (
+                      <span className="text-slate-500">· {t.category}</span>
+                    ) : null}
+                    {confBadge && (
+                      <span className={`inline-block rounded text-[9px] font-semibold uppercase tracking-wide px-1.5 py-0.5 ${confBadge.className}`}>
+                        {confBadge.label}
+                      </span>
+                    )}
+                  </div>
+                  {t.evidence ? (
+                    <div className="text-slate-600 mt-0.5">
+                      {safeUrl(t.evidence_url) ? (
+                        <a href={safeUrl(t.evidence_url)} target="_blank" rel="noreferrer" className="underline decoration-dotted text-mews-700">
+                          {t.evidence}
+                        </a>
+                      ) : (
+                        t.evidence
+                      )}
+                    </div>
+                  ) : null}
+                </li>
+              );
+            })}
           </ul>
         </Section>
       ) : null}

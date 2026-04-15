@@ -182,6 +182,7 @@ export default function Home() {
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
+      let parseErrors = 0;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -197,7 +198,16 @@ export default function Home() {
           let evt: StreamEvent;
           try {
             evt = JSON.parse(payload) as StreamEvent;
+            parseErrors = 0; // reset on any successful parse
           } catch {
+            parseErrors++;
+            if (parseErrors >= 3) {
+              setError(
+                "Stream error: received 3 consecutive malformed chunks — the response may be corrupted. Please try again.",
+              );
+              reader.cancel();
+              return;
+            }
             continue;
           }
           if (evt.type === "log") {

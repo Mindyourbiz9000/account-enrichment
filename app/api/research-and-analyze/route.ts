@@ -32,6 +32,24 @@ function stripCitationTags(text: string): string {
     .replace(/<\/?antml:cite\b[^>]*>/gi, "");
 }
 
+/** Prepare the Stage-1 dossier for the Stage-2 prompt.
+ *
+ *  Two savings, zero quality loss:
+ *  1. Compact JSON (no pretty-printing) — removes ~20-25% of whitespace tokens.
+ *  2. Cap sources to 25 entries and contacts to 10 — Stage 2 preserves
+ *     these sections verbatim so it never needs more than that to reason well.
+ *     All analytical content (challenges, reputation, tech stack) is kept whole.
+ */
+function serializeForStage2(dossier: unknown): string {
+  const d = dossier as Record<string, unknown>;
+  const trimmed = {
+    ...d,
+    contacts: Array.isArray(d.contacts) ? d.contacts.slice(0, 10) : d.contacts,
+    sources: Array.isArray(d.sources) ? d.sources.slice(0, 25) : d.sources,
+  };
+  return JSON.stringify(trimmed);
+}
+
 /** Minimum viability check for a dossier before sending it to the caller.
  *  A truncated or hallucinated response can parse as valid JSON but still
  *  be missing the fields the UI requires — catch that here rather than
@@ -394,7 +412,7 @@ Preserve \`hotel\`, \`property_profile\`, \`services\`, \`reputation\`, \`contac
 
 Raw dossier JSON:
 
-${JSON.stringify(rawDossier, null, 2)}
+${serializeForStage2(rawDossier)}
 
 Return ONLY the refined dossier JSON object. No prose, no code fences.`;
 

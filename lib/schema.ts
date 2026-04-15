@@ -110,7 +110,7 @@ export const HOTEL_RESEARCH_SCHEMA = {
               quotes: {
                 type: "array",
                 description:
-                  "EXACTLY 2 verbatim, word-for-word guest quotes that back this theme. Pick the two punchiest. Never paraphrase. Trim each to ≤20 words while preserving original wording.",
+                  "All verbatim, word-for-word guest quotes that back this theme (minimum 2, include all you found — do not limit to 2). Never paraphrase. Trim each to ≤20 words while preserving original wording.",
                 items: {
                   type: "object",
                   properties: {
@@ -158,7 +158,7 @@ export const HOTEL_RESEARCH_SCHEMA = {
               quotes: {
                 type: "array",
                 description:
-                  "EXACTLY 2 verbatim, word-for-word guest quotes that back this complaint. Pick the two punchiest. Never paraphrase. Trim each to ≤20 words.",
+                  "All verbatim, word-for-word guest quotes that back this complaint (minimum 2, include all you found — do not limit to 2). Never paraphrase. Trim each to ≤20 words.",
                 items: {
                   type: "object",
                   properties: {
@@ -240,7 +240,7 @@ export const HOTEL_RESEARCH_SCHEMA = {
           quotes: {
             type: "array",
             description:
-              "REQUIRED when evidence_type is 'guest_reviews'. Otherwise omit or leave empty. EXACTLY 2 verbatim, word-for-word guest quotes (or press snippets) that back this challenge. Pick the two punchiest. Never paraphrase. Trim each to ≤20 words.",
+              "REQUIRED when evidence_type is 'guest_reviews'. Otherwise omit or leave empty. All verbatim, word-for-word guest quotes that back this challenge (minimum 2, include all you found — do not limit to 2). Never paraphrase. Trim each to ≤20 words.",
             items: {
               type: "object",
               properties: {
