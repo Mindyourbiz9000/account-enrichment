@@ -375,10 +375,13 @@ Return ONLY the refined dossier JSON object. No prose, no code fences.`;
                   { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
                   { role: "user", content: analysisUserPrompt },
                 ],
-                // json_object mode is broadly supported across offline models
-                // and ensures the response is valid JSON without requiring a
-                // full schema definition (the prompt instructs the exact shape).
-                response_format: { type: "json_object" },
+                // r1-1776 supports json_schema (not json_object) — use the
+                // same schema enforcement as Stage 1 so the output shape is
+                // guaranteed to match HOTEL_RESEARCH_SCHEMA.
+                response_format: {
+                  type: "json_schema",
+                  json_schema: { schema: HOTEL_RESEARCH_SCHEMA },
+                },
                 max_tokens: 8000,
               }),
             },
