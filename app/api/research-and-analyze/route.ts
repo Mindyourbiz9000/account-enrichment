@@ -1,8 +1,28 @@
+// Two-stage Perplexity-only research pipeline:
+//
+//   Stage 1 — sonar-pro  : autonomous deep web search on the hotel,
+//             returns a raw dossier matching HOTEL_RESEARCH_SCHEMA.
+//
+//   Stage 2 — r1-1776    : offline DeepSeek-R1 reasoning model reads the
+//             Stage-1 dossier and rewrites the analytical sections —
+//             key_challenges, mews_qualification, mews_positioning — into
+//             sales-ready form using the full Mews playbook.
+//             Factual sections (hotel, property_profile, services,
+//             reputation, contacts, tech_stack_signals, sources) are
+//             preserved verbatim from Stage 1 — r1-1776 adds no web searches
+//             and cannot invent facts.
+//
+// Both stages surface their own log events through a single SSE channel, so
+// the frontend renders real-time progress for both steps.
+//
+// If Stage 2 fails for any reason the raw Stage-1 dossier is returned with a
+// WARN log — the user always gets a result.
+
 import { NextRequest } from "next/server";
 import { SYSTEM_PROMPT } from "@/lib/researchPrompt";
+import { ANALYSIS_SYSTEM_PROMPT } from "@/lib/analysisPrompt";
 import { HOTEL_RESEARCH_SCHEMA } from "@/lib/schema";
 
-// Deep research runs can take a while — allow up to 5 minutes on Vercel.
 export const maxDuration = 300;
 export const runtime = "nodejs";
 
@@ -120,9 +140,8 @@ export async function POST(req: NextRequest) {
       let lastEventAt = startedAt;
       const elapsed = () => ((Date.now() - startedAt) / 1000).toFixed(1) + "s";
 
-      // Proxy-defeating padding
+      // Proxy-defeating padding + heartbeat.
       safeEnqueue(encoder.encode(`: ${" ".repeat(2048)}\n\n`));
-
       const heartbeat = setInterval(() => {
         if (closed) return;
         sendComment("ping");
@@ -148,11 +167,17 @@ export async function POST(req: NextRequest) {
         }
       };
 
+      // Aggregate token usage across both stages for the UI.
+      let totalInputTokens = 0;
+      let totalOutputTokens = 0;
+      let totalCachedTokens = 0;
+
       try {
+        // ── STAGE 1 — Perplexity sonar-pro web search ────────────────────
         send({
           type: "log",
           level: "start",
-          message: `Starting deep research on "${hotelName}" (${city}, ${country}) via Perplexity`,
+          message: `Stage 1/2 — Perplexity searching the web for "${hotelName}" (${city}, ${country})`,
           t: elapsed(),
         });
 
@@ -169,15 +194,15 @@ Find at least two named individuals. Start with the General Manager: check Linke
 
 **Key challenges (PREMIUM DELIVERABLE — target 4–6, mix evidence types):**
 Every hotel has challenges beyond what guests publicly complain about. You need a healthy mix:
-- At least 1–2 \`guest_reviews\` challenges: pull ≥2 recent verbatim quotes per challenge (last 12 months). Look hard for payment / billing / check-in / check-out friction in the reviews — these unlock \`payment_related: true\` challenges.
-- At least 2 profile-driven challenges using \`segment_profile\`, \`tech_stack\`, \`services_gap\`, or \`press_or_ownership\`. Think structurally: what does a hotel of this size, segment, and tech posture inherently struggle with? Scan the Payments-pillar radar (OTA VCC reconciliation, no-show recovery, corporate bank-transfer friction, split folios, manual invoicing, chargebacks, tipping, currency surprises) — flag every match with \`payment_related: true\`.
-Every challenge must name a specific Mews product in \`mews_angle\` — not "Mews can help", but the exact module and what it solves for this hotel.
+- At least 1–2 guest_reviews challenges: pull ≥2 recent verbatim quotes per challenge (last 12 months). Look hard for payment / billing / check-in / check-out friction in the reviews — these unlock payment_related: true challenges.
+- At least 2 profile-driven challenges using segment_profile, tech_stack, services_gap, or press_or_ownership. Think structurally: what does a hotel of this size, segment, and tech posture inherently struggle with? Scan the Payments-pillar radar (OTA VCC reconciliation, no-show recovery, corporate bank-transfer friction, split folios, manual invoicing, chargebacks, tipping, currency surprises) — flag every match with payment_related: true.
+Every challenge must name a specific Mews product in mews_angle — not "Mews can help", but the exact module and what it solves for this hotel.
 
-**Everything else:** Fill all schema fields for which evidence exists. Aim for 10+ source URLs. Run the mandatory depth & completeness self-review checklist before returning. Ground \`mews_qualification\` and \`mews_positioning\` in the playbook primer — quote segment fit-signals and red-flags verbatim from the cheat-sheet.
+**Everything else:** Fill all schema fields for which evidence exists. Aim for 10+ source URLs. Run the mandatory depth & completeness self-review checklist before returning. Ground mews_qualification and mews_positioning in the playbook primer — quote segment fit-signals and red-flags verbatim from the cheat-sheet.
 
 Return only the JSON object, no prose, no code fences.`;
 
-        const perplexityRes = await fetch(
+        const stage1Res = await fetch(
           "https://api.perplexity.ai/chat/completions",
           {
             method: "POST",
@@ -191,44 +216,34 @@ Return only the JSON object, no prose, no code fences.`;
                 { role: "system", content: SYSTEM_PROMPT },
                 { role: "user", content: userPrompt },
               ],
-              // Enforce the dossier shape server-side so we no longer need
-              // to stringify the schema into the prompt (saves ~4-5k input
-              // tokens per call) and reduces JSON-parse failures.
               response_format: {
                 type: "json_schema",
                 json_schema: { schema: HOTEL_RESEARCH_SCHEMA },
               },
-              // Keep "high" search context — this dossier relies on deep web
-              // evidence (recent reviews, named contacts, tech-stack hints).
-              // "medium" made outputs visibly lighter in testing.
               web_search_options: { search_context_size: "high" },
-              // Give the model enough room for a full rich JSON dossier.
-              // Under structured output, Perplexity's implicit cap can
-              // quietly truncate — an explicit ceiling prevents that.
               max_tokens: 8000,
             }),
           },
         );
 
-        if (!perplexityRes.ok) {
-          const errText = await perplexityRes.text();
-          let errMsg = `Perplexity API error ${perplexityRes.status}`;
+        if (!stage1Res.ok) {
+          const errText = await stage1Res.text();
+          let errMsg = `Perplexity API error ${stage1Res.status}`;
           try {
             const parsed = JSON.parse(errText);
             if (parsed?.error?.message) errMsg = parsed.error.message;
           } catch {
             // use status message
           }
-          if (perplexityRes.status === 401) {
+          if (stage1Res.status === 401)
             errMsg =
               "Invalid Perplexity API key — please check PERPLEXITY_API_KEY in your Vercel environment variables.";
-          } else if (perplexityRes.status === 429) {
+          else if (stage1Res.status === 429)
             errMsg =
               "Perplexity rate limit reached — please try again in a few minutes.";
-          } else if (perplexityRes.status === 402) {
+          else if (stage1Res.status === 402)
             errMsg =
               "Perplexity account is out of credits — please top up at perplexity.ai.";
-          }
           send({ type: "error", error: errMsg });
           finish();
           return;
@@ -241,55 +256,56 @@ Return only the JSON object, no prose, no code fences.`;
           t: elapsed(),
         });
 
-        // Use non-streaming so we get a single, reliable JSON response.
-        // The heartbeat above keeps the SSE connection alive and shows
-        // "Still working…" while we wait.
-        const data = (await perplexityRes.json()) as {
-          choices?: { message?: { content?: string }; finish_reason?: string }[];
+        const stage1Data = (await stage1Res.json()) as {
+          choices?: { message?: { content?: string } }[];
           usage?: {
             prompt_tokens?: number;
             completion_tokens?: number;
-            // Perplexity returns cached prefix tokens when auto-caching
-            // hits. Naming varies across provider versions — accept both.
             prompt_tokens_cached?: number;
             cached_tokens?: number;
           };
         };
 
-        const fullContent = data.choices?.[0]?.message?.content ?? "";
-        const inputTokens = data.usage?.prompt_tokens ?? 0;
-        const outputTokens = data.usage?.completion_tokens ?? 0;
-        const cachedTokens =
-          data.usage?.prompt_tokens_cached ?? data.usage?.cached_tokens ?? 0;
+        const stage1Content = stage1Data.choices?.[0]?.message?.content ?? "";
+        const s1In = stage1Data.usage?.prompt_tokens ?? 0;
+        const s1Out = stage1Data.usage?.completion_tokens ?? 0;
+        const s1Cached =
+          stage1Data.usage?.prompt_tokens_cached ??
+          stage1Data.usage?.cached_tokens ??
+          0;
+        totalInputTokens += s1In;
+        totalOutputTokens += s1Out;
+        totalCachedTokens += s1Cached;
 
         send({
           type: "log",
           level: "done",
-          message: `Perplexity finished — parsing JSON… (in=${inputTokens}, cached=${cachedTokens}, out=${outputTokens})`,
+          message: `Stage 1 done — parsing JSON… (in=${s1In}, cached=${s1Cached}, out=${s1Out})`,
           t: elapsed(),
         });
 
-        if (!fullContent) {
+        if (!stage1Content) {
           send({ type: "error", error: "Perplexity returned no content" });
           finish();
           return;
         }
 
-        let dossier: unknown;
+        let rawDossier: unknown;
         try {
-          dossier = extractJson(fullContent);
+          rawDossier = extractJson(stage1Content);
         } catch {
           send({
             type: "error",
             error: "Failed to parse JSON from Perplexity response",
-            raw: fullContent,
+            raw: stage1Content,
           });
           finish();
           return;
         }
 
-        // Enrich with hero image from the hotel's own site
-        const d = dossier as {
+        // Enrich with hero image from the hotel's own site before Stage 2
+        // so the analysis dossier already has the image URL.
+        const d = rawDossier as {
           hotel?: { website?: string; hero_image_url?: string };
         } | null;
         const website = d?.hotel?.website;
@@ -319,15 +335,134 @@ Return only the JSON object, no prose, no code fences.`;
           }
         }
 
+        // ── STAGE 2 — r1-1776 reasoning analysis ─────────────────────────
+        send({
+          type: "log",
+          level: "start",
+          message:
+            "Stage 2/2 — r1-1776 analyzing the dossier against the Mews playbook…",
+          t: elapsed(),
+        });
+
+        const analysisUserPrompt = `Here is the raw research dossier for ${hotelName} in ${city}, ${country}, gathered by Perplexity sonar-pro with live web search. Read it end-to-end, reason carefully, then return the refined dossier per your system instructions.
+
+Preserve \`hotel\`, \`property_profile\`, \`services\`, \`reputation\`, \`contacts\`, \`tech_stack_signals\`, and \`sources\` verbatim. Rewrite \`key_challenges\`, \`mews_qualification\`, and \`mews_positioning\` with your analyst's judgment.
+
+Raw dossier JSON:
+
+${JSON.stringify(rawDossier, null, 2)}
+
+Return ONLY the refined dossier JSON object. No prose, no code fences.`;
+
+        let finalDossier: unknown = null;
+
+        try {
+          const stage2Res = await fetch(
+            "https://api.perplexity.ai/chat/completions",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+              },
+              body: JSON.stringify({
+                // r1-1776 is Perplexity's offline DeepSeek-R1 reasoning model —
+                // no live web access, pure chain-of-thought analysis. Ideal for
+                // applying the Mews playbook to the Stage-1 data without
+                // generating new searches we don't need.
+                model: "r1-1776",
+                messages: [
+                  { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
+                  { role: "user", content: analysisUserPrompt },
+                ],
+                // json_object mode is broadly supported across offline models
+                // and ensures the response is valid JSON without requiring a
+                // full schema definition (the prompt instructs the exact shape).
+                response_format: { type: "json_object" },
+                max_tokens: 8000,
+              }),
+            },
+          );
+
+          if (!stage2Res.ok) {
+            const errText = await stage2Res.text();
+            let errMsg = `r1-1776 API error ${stage2Res.status}: ${errText.slice(0, 200)}`;
+            try {
+              const parsed = JSON.parse(errText);
+              if (parsed?.error?.message) errMsg = parsed.error.message;
+            } catch {
+              // use status message
+            }
+            throw new Error(errMsg);
+          }
+
+          const stage2Data = (await stage2Res.json()) as {
+            choices?: { message?: { content?: string } }[];
+            usage?: {
+              prompt_tokens?: number;
+              completion_tokens?: number;
+              prompt_tokens_cached?: number;
+              cached_tokens?: number;
+            };
+          };
+
+          const stage2Content =
+            stage2Data.choices?.[0]?.message?.content ?? "";
+          const s2In = stage2Data.usage?.prompt_tokens ?? 0;
+          const s2Out = stage2Data.usage?.completion_tokens ?? 0;
+          const s2Cached =
+            stage2Data.usage?.prompt_tokens_cached ??
+            stage2Data.usage?.cached_tokens ??
+            0;
+          totalInputTokens += s2In;
+          totalOutputTokens += s2Out;
+          totalCachedTokens += s2Cached;
+
+          send({
+            type: "log",
+            level: "done",
+            message: `Stage 2 done — parsing JSON… (in=${s2In}, cached=${s2Cached}, out=${s2Out})`,
+            t: elapsed(),
+          });
+
+          if (!stage2Content) {
+            throw new Error("r1-1776 returned no content");
+          }
+
+          finalDossier = extractJson(stage2Content);
+        } catch (err) {
+          // Stage 2 failure is non-fatal — fall back to the Stage-1 dossier
+          // so the user still gets a result.
+          const msg = err instanceof Error ? err.message : String(err);
+          send({
+            type: "log",
+            level: "warn",
+            message: `Stage 2 analysis failed (${msg}) — returning Stage-1 dossier.`,
+            t: elapsed(),
+          });
+          finalDossier = rawDossier;
+        }
+
+        // Safety net: patch hero_image_url back in if Stage 2 dropped it.
+        const analyzed = finalDossier as {
+          hotel?: { hero_image_url?: string };
+        } | null;
+        const rawHotelImg = (
+          rawDossier as { hotel?: { hero_image_url?: string } } | null
+        )?.hotel?.hero_image_url;
+        if (analyzed?.hotel && !analyzed.hotel.hero_image_url && rawHotelImg) {
+          analyzed.hotel.hero_image_url = rawHotelImg;
+        }
+
         send({
           type: "dossier",
-          dossier,
+          dossier: finalDossier,
           usage:
-            inputTokens || outputTokens
+            totalInputTokens || totalOutputTokens
               ? {
-                  input_tokens: inputTokens,
-                  output_tokens: outputTokens,
-                  cached_tokens: cachedTokens,
+                  input_tokens: totalInputTokens,
+                  output_tokens: totalOutputTokens,
+                  cached_tokens: totalCachedTokens,
                 }
               : undefined,
           elapsed: elapsed(),

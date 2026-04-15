@@ -1,8 +1,7 @@
 import { NextRequest } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 
 // Bulk qualification is run row-by-row from the /bulk page. Each run is
-// much lighter than the full dossier: fewer searches, smaller output,
+// much lighter than the full dossier: 1-2 quick web searches, smaller output,
 // and only the `mews_qualification` shape is returned.
 export const maxDuration = 120;
 export const runtime = "nodejs";
@@ -52,11 +51,11 @@ const QUALIFY_SCHEMA = {
   },
   required: ["hotel", "qualification"],
   additionalProperties: false,
-} as const;
+};
 
 const QUALIFY_SYSTEM_PROMPT = `You are a hospitality-industry research analyst qualifying hotel leads for Mews, a cloud-native Hospitality Cloud (PMS + Payments + ecosystem).
 
-Your job: given a hotel name, city and country, decide in ONE or TWO quick web searches whether this property is a 🟩 strong fit, 🟨 limited fit, 🟥 poor fit, or 'needs more discovery' for Mews ICP.
+Your job: given a hotel name, city and country, do 1–2 quick web searches to determine whether this property is a 🟩 strong fit, 🟨 limited fit, 🟥 poor fit, or 'needs more discovery' for Mews ICP. Return a single JSON object — nothing else.
 
 ## Mews ICP (apply in this order)
 🟩 Strong fit: 20–400 rooms (if group) or 20–200 rooms (if individual); independent or 3–20 property groups; urban / city-centre / airport / metro; economy–upscale; Europe (UK, DACH, FR, ES, NL, IT, CH, CZ, PL, Nordics, IE, PT). NA / Singapore / AU / NZ are expanding yellow-fit markets.
@@ -76,21 +75,14 @@ Your job: given a hotel name, city and country, decide in ONE or TWO quick web s
 2. Luxury resort / casino / all-inclusive / ultra-luxury bespoke
 3. Hotel in an unsupported market (BR / MX / IN / TH / ID / CN / JP / KR / SA / ZA)
 4. Rural / remote with no cloud-native operations
-5. Rate mixing inside a single reservation, doorlock vendors requiring PINs stored in the PMS, or other deal-breakers from the Mews playbook
 
 ## How to work
-1. Use web_search at most TWICE — this is a bulk run, keep it fast and cheap.
-   - Search 1: the hotel's own website + room count + segment.
-   - Search 2 (optional, only if truly needed): quick check on country / ownership / chain context if search 1 didn't give you enough.
-2. Never fabricate room counts or segment. If the site doesn't publish a room count, estimate from visible signals (room types, photos, size) and say so in the rationale. If you really cannot tell, return 'needs more discovery'.
-3. Be honest when the hotel is 🟥 — don't force-fit.
+1. Search the hotel's own website to get room count, segment, and location.
+2. Only do a second search if context (ownership, chain, market) is unclear from the first.
+3. Never fabricate room counts. If unknown, estimate from visible signals and say so in the rationale.
+4. Be honest when the hotel is 🟥 — don't force-fit.
 
-## Output format (critical)
-Return a single JSON object — and NOTHING ELSE. No prose before or after. No markdown code fences. Never wrap values in <cite> tags. The object MUST conform to this JSON schema:
-
-${JSON.stringify(QUALIFY_SCHEMA, null, 2)}`;
-
-const client = new Anthropic();
+Return only the JSON object matching the schema. No prose, no code fences, no \`<cite>\` tags.`;
 
 function stripCitationTags(text: string): string {
   return text
@@ -141,10 +133,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.PERPLEXITY_API_KEY) {
     return new Response(
       JSON.stringify({
-        error: "ANTHROPIC_API_KEY is not configured on the server",
+        error: "PERPLEXITY_API_KEY is not configured on the server",
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
@@ -159,36 +151,62 @@ Country: ${country}
 Return only the JSON object, no prose, no code fences.`;
 
   try {
-    const msg = await client.messages.create({
-      model: "claude-haiku-4-5",
-      max_tokens: 1500,
-      system: [
-        {
-          type: "text",
-          text: QUALIFY_SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
+    const res = await fetch("https://api.perplexity.ai/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.PERPLEXITY_API_KEY}`,
+      },
+      body: JSON.stringify({
+        // sonar is the lightweight tier — fast and cost-effective for the
+        // 1-2 searches a bulk qualification needs.
+        model: "sonar",
+        messages: [
+          { role: "system", content: QUALIFY_SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: { schema: QUALIFY_SCHEMA },
         },
-      ],
-      tools: [
-        {
-          type: "web_search_20250305",
-          name: "web_search",
-          max_uses: 2,
-        } as unknown as Anthropic.Messages.ToolUnion,
-      ],
-      messages: [{ role: "user", content: userPrompt }],
+        // "low" context is enough for a quick ICP score — we don't need
+        // deep review evidence for this pass.
+        web_search_options: { search_context_size: "low" },
+        max_tokens: 1500,
+      }),
     });
 
-    const text = msg.content
-      .filter((b): b is Anthropic.TextBlock => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
+    if (!res.ok) {
+      const errText = await res.text();
+      let errMsg = `Perplexity API error ${res.status}`;
+      try {
+        const parsed = JSON.parse(errText);
+        if (parsed?.error?.message) errMsg = parsed.error.message;
+      } catch {
+        // use status message
+      }
+      if (res.status === 401)
+        errMsg =
+          "Invalid Perplexity API key — please check PERPLEXITY_API_KEY.";
+      else if (res.status === 429)
+        errMsg = "Perplexity rate limit reached — please try again shortly.";
+      else if (res.status === 402)
+        errMsg = "Perplexity account is out of credits.";
+      return new Response(JSON.stringify({ error: errMsg }), {
+        status: res.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
+    const data = (await res.json()) as {
+      choices?: { message?: { content?: string } }[];
+      usage?: { prompt_tokens?: number; completion_tokens?: number };
+    };
+
+    const text = data.choices?.[0]?.message?.content ?? "";
     if (!text) {
       return new Response(
-        JSON.stringify({
-          error: `Claude returned no text (stop_reason: ${msg.stop_reason})`,
-        }),
+        JSON.stringify({ error: "Perplexity returned no content" }),
         { status: 502, headers: { "Content-Type": "application/json" } },
       );
     }
@@ -204,11 +222,14 @@ Return only the JSON object, no prose, no code fences.`;
     }
 
     return new Response(
-      JSON.stringify({ ...(parsed as object), usage: msg.usage }),
-      {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      },
+      JSON.stringify({
+        ...(parsed as object),
+        usage: {
+          input_tokens: data.usage?.prompt_tokens ?? 0,
+          output_tokens: data.usage?.completion_tokens ?? 0,
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
