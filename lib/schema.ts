@@ -1,4 +1,4 @@
-// JSON schema used by Claude's structured output to produce consistent
+// JSON schema used by Perplexity's structured output to produce consistent
 // research dossiers the Mews sales team can consume.
 
 export const HOTEL_RESEARCH_SCHEMA = {
@@ -53,9 +53,14 @@ export const HOTEL_RESEARCH_SCHEMA = {
         estimated_adr: {
           type: "string",
           description:
-            "Estimated Average Daily Rate if public; otherwise stated as unknown with reasoning",
+            "Live rate observed from Booking.com / hotel booking engine for a standard double, midweek 3–4 weeks out (e.g. 'from €189/night midweek, from €249/night weekend, Booking.com, Apr 2026'). Only use a segment-based estimate if no OTA listing exists — label it 'est.' in that case.",
         },
         occupancy_notes: { type: "string" },
+        local_market_context: {
+          type: "string",
+          description:
+            "Brief characterisation of demand mix (leisure / corporate / MICE / transit), key seasonal peaks/troughs, and 1–2 nearby demand generators (e.g. 'Corporate-heavy; near Frankfurt Messe convention centre; strong Mon–Thu demand, leisure softer on weekends').",
+        },
         year_opened_or_renovated: { type: "string" },
       },
       additionalProperties: false,
@@ -292,6 +297,17 @@ export const HOTEL_RESEARCH_SCHEMA = {
             description:
               "'verified' only if you found the exact LinkedIn URL for this exact person. 'guessed' if you constructed the URL from a name. Omit the linkedin field entirely if your confidence is <95%.",
           },
+          tenure_confidence: {
+            type: "string",
+            enum: ["current", "stale_risk", "unverified", "conflicting_sources"],
+            description:
+              "'current' if two independent sources confirm this person is in role now. 'stale_risk' if the only evidence is >12 months old or from a single source. 'unverified' if only LinkedIn with no hotel-page confirmation. 'conflicting_sources' if two sources disagree.",
+          },
+          source_date: {
+            type: "string",
+            description:
+              "Date of the most recent source confirming this person is in role (e.g. 'Mar 2026', '2025-Q4'). Helps reps gauge how fresh the contact data is.",
+          },
           source: {
             type: "string",
             description: "Where this contact was found",
@@ -311,6 +327,17 @@ export const HOTEL_RESEARCH_SCHEMA = {
           system: { type: "string" },
           category: { type: "string" },
           evidence: { type: "string" },
+          confidence: {
+            type: "string",
+            enum: ["high", "medium", "low"],
+            description:
+              "'high' if seen in a booking-engine footer, integration directory, or brand tech page. 'medium' if from a job posting ≤24 months old, a guest review naming the system, or a directory listing ≤18 months old. 'low' if inferred from segment/brand/market with no direct evidence — tag explicitly as 'inferred'.",
+          },
+          evidence_url: {
+            type: "string",
+            description:
+              "URL of the page where this system was observed (job posting, integration directory, hotel booking engine footer). Omit if no direct URL is available.",
+          },
         },
         required: ["system"],
         additionalProperties: false,
