@@ -23,12 +23,6 @@ type StreamEvent =
     }
   | { type: "error"; error: string; raw?: string };
 
-// Feature flag: hide the Claude deep-search button and make Perplexity the
-// default. Flip back to `true` to re-enable the Claude path — all of its
-// plumbing (onSubmit("claude"), /api/research route, log rendering) is
-// intentionally kept intact.
-const SHOW_CLAUDE_BUTTON = false;
-
 const LEVEL_META: Record<
   LogEntry["level"],
   { label: string; className: string }
@@ -47,7 +41,7 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
-  const [provider, setProvider] = useState<"claude" | "perplexity" | null>(null);
+  const [provider, setProvider] = useState<"perplexity" | "perplexity+r1" | null>(null);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [thinking, setThinking] = useState("");
@@ -138,7 +132,7 @@ export default function Home() {
 
   async function onSubmit(
     e: React.FormEvent,
-    chosenProvider: "claude" | "perplexity",
+    chosenProvider: "perplexity" | "perplexity+r1",
   ) {
     e.preventDefault();
     setProvider(chosenProvider);
@@ -153,9 +147,9 @@ export default function Home() {
     setRawOutput(null);
 
     const endpoint =
-      chosenProvider === "perplexity"
-        ? "/api/research-perplexity"
-        : "/api/research";
+      chosenProvider === "perplexity+r1"
+        ? "/api/research-and-analyze"
+        : "/api/research-perplexity";
 
     try {
       const res = await fetch(endpoint, {
@@ -270,9 +264,8 @@ export default function Home() {
         <section className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6 flex flex-col h-full">
           <form
             onSubmit={(e) => {
-              // Pressing Enter in any input kicks off a Perplexity search —
-              // Perplexity is the default provider. The Claude button (when
-              // re-enabled) still has to be clicked explicitly.
+              // Pressing Enter in any input kicks off a standard Perplexity
+              // search — it is the default (type="submit") action.
               if (loading) {
                 e.preventDefault();
                 return;
@@ -319,38 +312,30 @@ export default function Home() {
                 />
               </div>
             </div>
-            <div
-              className={`grid ${
-                SHOW_CLAUDE_BUTTON ? "grid-cols-2" : "grid-cols-1"
-              } gap-3 mt-auto`}
-            >
-              {SHOW_CLAUDE_BUTTON && (
-                <button
-                  type="button"
-                  disabled={loading}
-                  onClick={(e) => onSubmit(e, "claude")}
-                  className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
-                >
-                  {loading && provider === "claude"
-                    ? "Researching…"
-                    : "Run Deep Search (Claude)"}
-                </button>
-              )}
-              {/* type="submit" so this is the form's default button — pressing
-                  Enter in any input triggers implicit form submission, which
-                  the form's onSubmit handler turns into a Perplexity search.
-                  Clicking the button goes through the same onSubmit path, so
-                  we don't need a duplicate onClick here. */}
+            <div className="grid grid-cols-2 gap-3 mt-auto">
+              {/* type="submit" — pressing Enter in any input fires a
+                  standard Perplexity sonar-pro search (fast, no analysis). */}
               <button
                 type="submit"
                 disabled={loading}
                 className="rounded-lg bg-[#20808D] hover:bg-[#1a6a76] disabled:bg-slate-400 text-white font-medium py-2.5 transition text-sm"
               >
                 {loading && provider === "perplexity"
-                  ? "Researching…"
-                  : SHOW_CLAUDE_BUTTON
-                    ? "Run Deep Search (Perplexity)"
-                    : "Run Deep Search"}
+                  ? "Searching…"
+                  : "Run Deep Search"}
+              </button>
+              {/* Two-stage pipeline: sonar-pro gathers the raw research,
+                  then r1-1776 applies deep playbook reasoning to produce
+                  the qualification, challenges, and positioning. */}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={(e) => onSubmit(e, "perplexity+r1")}
+                className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
+              >
+                {loading && provider === "perplexity+r1"
+                  ? "Analyzing…"
+                  : "Deep Research + AI Analysis"}
               </button>
             </div>
           </form>
@@ -407,8 +392,10 @@ export default function Home() {
                   </span>
                   <span>
                     Connecting to{" "}
-                    {provider === "perplexity" ? "Perplexity" : "Claude"} —
-                    first search can take 30–60s…
+                    {provider === "perplexity+r1"
+                      ? "Perplexity + r1-1776"
+                      : "Perplexity"}{" "}
+                    — first search can take 30–60s…
                   </span>
                 </div>
               )}
