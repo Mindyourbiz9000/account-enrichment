@@ -47,7 +47,9 @@ export default function Home() {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [loading, setLoading] = useState(false);
-  const [provider, setProvider] = useState<"claude" | "perplexity" | null>(null);
+  const [provider, setProvider] = useState<
+    "claude" | "perplexity" | "perplexity+claude" | null
+  >(null);
 
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [thinking, setThinking] = useState("");
@@ -138,7 +140,7 @@ export default function Home() {
 
   async function onSubmit(
     e: React.FormEvent,
-    chosenProvider: "claude" | "perplexity",
+    chosenProvider: "claude" | "perplexity" | "perplexity+claude",
   ) {
     e.preventDefault();
     setProvider(chosenProvider);
@@ -153,9 +155,11 @@ export default function Home() {
     setRawOutput(null);
 
     const endpoint =
-      chosenProvider === "perplexity"
-        ? "/api/research-perplexity"
-        : "/api/research";
+      chosenProvider === "perplexity+claude"
+        ? "/api/research-and-analyze"
+        : chosenProvider === "perplexity"
+          ? "/api/research-perplexity"
+          : "/api/research";
 
     try {
       const res = await fetch(endpoint, {
@@ -321,7 +325,7 @@ export default function Home() {
             </div>
             <div
               className={`grid ${
-                SHOW_CLAUDE_BUTTON ? "grid-cols-2" : "grid-cols-1"
+                SHOW_CLAUDE_BUTTON ? "grid-cols-3" : "grid-cols-2"
               } gap-3 mt-auto`}
             >
               {SHOW_CLAUDE_BUTTON && (
@@ -351,6 +355,19 @@ export default function Home() {
                   : SHOW_CLAUDE_BUTTON
                     ? "Run Deep Search (Perplexity)"
                     : "Run Deep Search"}
+              </button>
+              {/* Chained pipeline: Perplexity gathers the raw research data,
+                  then Claude analyses it to produce the qualification verdict,
+                  refined key challenges, and tailored positioning. */}
+              <button
+                type="button"
+                disabled={loading}
+                onClick={(e) => onSubmit(e, "perplexity+claude")}
+                className="rounded-lg bg-mews-600 hover:bg-mews-700 disabled:bg-slate-400 text-black font-medium py-2.5 transition text-sm"
+              >
+                {loading && provider === "perplexity+claude"
+                  ? "Researching…"
+                  : "Perplexity + Claude Analysis"}
               </button>
             </div>
           </form>
@@ -407,8 +424,12 @@ export default function Home() {
                   </span>
                   <span>
                     Connecting to{" "}
-                    {provider === "perplexity" ? "Perplexity" : "Claude"} —
-                    first search can take 30–60s…
+                    {provider === "perplexity"
+                      ? "Perplexity"
+                      : provider === "perplexity+claude"
+                        ? "Perplexity + Claude"
+                        : "Claude"}{" "}
+                    — first search can take 30–60s…
                   </span>
                 </div>
               )}
