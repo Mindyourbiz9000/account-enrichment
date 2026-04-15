@@ -937,7 +937,7 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                           {c.evidence}
                         </div>
                       )}
-                    {c.quotes && c.quotes.length > 0 && (
+                    {c.quotes && c.quotes.length > 0 ? (
                       <div>
                         <SupportingQuotes
                           quotes={c.quotes}
@@ -946,7 +946,11 @@ export function HotelDossierView({ dossier }: { dossier: HotelDossier }) {
                           }
                         />
                       </div>
-                    )}
+                    ) : c.evidence_type === "guest_reviews" ? (
+                      <div className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                        ⚠ evidence_type is &ldquo;guest_reviews&rdquo; but no quotes were returned — check model output
+                      </div>
+                    ) : null}
                     {/* Non-review-backed challenges (segment/tech/services/press)
                         surface their reasoning via evidence_basis + a type
                         label so the salesperson can see WHY this is a real
