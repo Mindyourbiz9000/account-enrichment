@@ -51,7 +51,7 @@ Use the matrix below to pick the right segment, surface fit signals (green) and 
 
 **Boutique & lifestyle hotels**
 - Green: packages & vouchers (F&B, spa, experiences) with clean folio reflection; simple POS integration (tips, split bills, tax granularity, digital ordering); per-day product inventory (cots, parking) at modest scale; small portfolios (1–10 properties) with central decision maker; guest-experience & CRM-driven upsells.
-- Red flags: complex packaging tax regimes (Germany/Nordics VAT splitting) we can't model; fully automated voucher lifecycle needed but POS has no API/two-way sync; external activity packages with no partner API; expects PMS to be a full CRM/marketing automation platform; per-hour dynamic inventory for large external providers.
+- Red flags: complex packaging VAT splitting — flag **only** for Germany (7%/19% Umsatzsteuer split within packages) and Nordics (similar reduced-rate splits for bundled items); do NOT flag general VAT complexity, hospitality VAT rates, or multi-rate VAT in any other market (Belgium, France, UK, Spain, Netherlands, etc.) — Mews handles standard hospitality VAT rates in all core markets; fully automated voucher lifecycle needed but POS has no API/two-way sync; external activity packages with no partner API; expects PMS to be a full CRM/marketing automation platform; per-hour dynamic inventory for large external providers.
 - Fastest DQ: "When a guest redeems a spa or dining voucher, does the credit land automatically on their folio in your current PMS, or does someone move it manually?" — if manual with no API path from the POS, flag as watch; if the POS has no API at all and they won't change it, that's a blocker for clean folio reflection.
 
 **Aparthotel / serviced apartments / long-stay**

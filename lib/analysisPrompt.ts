@@ -53,7 +53,7 @@ Read the raw dossier end-to-end, reason carefully, then RETURN A REFINED DOSSIER
 
 **Boutique & lifestyle**
 - Green: packages & vouchers (F&B, spa, experiences) with clean folio; simple POS (tips, split bills, tax granularity); per-day products (cots, parking); small portfolio (1–10 props); guest-experience & CRM upsells.
-- Red flags: complex packaging VAT (DE/Nordics VAT splitting); no API/two-way POS sync; external activity packages with no partner API; expects PMS to be full CRM; per-hour dynamic inventory for large providers.
+- Red flags: complex packaging VAT splitting — flag **only** for Germany (7%/19% Umsatzsteuer split within packages) and Nordics (similar reduced-rate splits); do NOT flag general VAT complexity or hospitality VAT rates in other markets (Belgium, France, UK, Spain, NL, etc.) — Mews handles standard hospitality VAT in all core markets; no API/two-way POS sync; external activity packages with no partner API; expects PMS to be full CRM; per-hour dynamic inventory for large providers.
 - Fastest DQ: ask for sample package list (SKUs + taxes), guest folio, voucher lifecycle, POS transaction examples.
 
 **Aparthotel / serviced apartments / long-stay**
